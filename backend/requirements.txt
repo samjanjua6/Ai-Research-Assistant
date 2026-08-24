@@ -1,0 +1,31 @@
+# ── LangGraph & LangChain ─────────────────────────────────────────
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-groq>=0.2.0
+langchain-community>=0.3.0
+duckduckgo-search>=6.0.0
+
+# ── FastAPI & Server ──────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+sse-starlette>=2.1.0
+python-multipart>=0.0.9
+
+# ── Database ──────────────────────────────────────────────────────
+sqlalchemy[asyncio]>=2.0.0
+asyncpg>=0.29.0
+alembic>=1.13.0
+
+# ── Config & Utilities ────────────────────────────────────────────
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+python-dotenv>=1.0.0
+python-ulid>=2.0.0
+
+# ── Authentication ─────────────────────────────────────────────────
+pyjwt>=2.8.0
+bcrypt>=4.1.0
+email-validator>=2.0.0
+
+# ── Logging ───────────────────────────────────────────────────────
+structlog>=24.0.0

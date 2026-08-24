@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Assistant — redesign</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg:#0A0C12;
+    --panel:#12151F;
+    --panel-alt:#171B27;
+    --border:#232838;
+    --text:#E7E9F0;
+    --text-dim:#9297AC;
+    --text-faint:#5B6178;
+    --violet:#7C6AF0;
+    --violet-soft:rgba(124,106,240,.14);
+    --teal:#33D6A6;
+    --teal-soft:rgba(51,214,166,.14);
+    --amber:#F5A623;
+    --amber-soft:rgba(245,166,35,.14);
+    --rose:#F0576B;
+    --rose-soft:rgba(240,87,107,.14);
+    --radius:10px;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  *:focus-visible{outline:2px solid var(--violet); outline-offset:2px;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--font-body); -webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:var(--font-display); margin:0;}
+  p{margin:0;}
+  button{font-family:inherit; cursor:pointer;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:16px 28px; border-bottom:1px solid var(--border);}
+  .topbar .brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:600; font-size:17px;}
+  .topbar .brand .mark{width:26px; height:26px; border-radius:7px; background:linear-gradient(140deg,var(--violet),#4A3FB0); display:flex; align-items:center; justify-content:center; font-size:13px;}
+  .badge-lg{font-family:var(--font-mono); font-size:11px; color:var(--text-dim); border:1px solid var(--border); padding:5px 10px; border-radius:999px; background:var(--panel-alt);}
+
+  .layout{display:grid; grid-template-columns:340px 1fr; gap:20px; max-width:1400px; margin:0 auto; padding:24px;}
+  @media (max-width:960px){ .layout{grid-template-columns:1fr;} }
+
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px;}
+  .eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-faint);}
+
+  /* sidebar */
+  .sidebar{display:flex; flex-direction:column; gap:16px;}
+  textarea{width:100%; margin-top:10px; min-height:74px; background:var(--panel-alt); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:var(--font-body); font-size:14px; padding:10px 12px; resize:vertical;}
+  .tip{font-size:12px; color:var(--text-faint); margin-top:8px;}
+  .run-btn{width:100%; margin-top:12px; background:var(--violet); color:#fff; border:none; border-radius:8px; padding:11px; font-weight:600; font-size:14px;}
+  .run-btn:hover{background:#6C5CE8;}
+
+  .run-card{border:1px solid var(--border); border-radius:8px; padding:12px; background:var(--panel-alt); cursor:default;}
+  .run-card + .run-card{margin-top:10px;}
+  .run-card .q{font-size:13px; color:var(--text); display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;}
+  .run-meta{display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap;}
+  .dot{width:7px; height:7px; border-radius:50%; flex:0 0 auto;}
+  .dot.done{background:var(--teal);}
+  .dot.failed{background:var(--rose);}
+  .dot.running{background:var(--violet); animation:pulse 1.4s infinite;}
+  .run-time{font-family:var(--font-mono); font-size:11px; color:var(--text-faint);}
+  .fail-reason{font-size:11.5px; color:var(--rose); margin-top:6px;}
+
+  .chip{font-family:var(--font-mono); font-size:11px; padding:2px 8px; border-radius:999px; background:var(--panel); color:var(--text-dim); border:1px solid var(--border);}
+  .chip.violet{color:var(--violet); border-color:rgba(124,106,240,.4); background:var(--violet-soft);}
+  .chip.teal{color:var(--teal); border-color:rgba(51,214,166,.4); background:var(--teal-soft);}
+
+  /* right panel */
+  .run-panel{display:flex; flex-direction:column; gap:16px;}
+
+  .banner{display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--violet-soft); border:1px solid rgba(124,106,240,.35); color:var(--text); border-radius:var(--radius); padding:11px 16px; font-size:13px;}
+  .banner button{background:none; border:none; color:var(--text-dim); font-size:16px; line-height:1;}
+
+  .run-header .q-title{font-size:19px; font-weight:600; margin-top:6px;}
+  .meta-row{display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap;}
+  .status-pill{font-family:var(--font-mono); font-size:11.5px; padding:4px 10px; border-radius:999px; display:flex; align-items:center; gap:6px;}
+  .status-pill.done{background:var(--teal-soft); color:var(--teal); border:1px solid rgba(51,214,166,.4);}
+  .stat{font-family:var(--font-mono); font-size:12px; color:var(--text-dim); display:flex; align-items:center; gap:5px;}
+  .stat b{color:var(--text); font-weight:500;}
+
+  .progress-track{display:flex; gap:4px; margin-top:14px;}
+  .progress-seg{height:4px; flex:1; border-radius:2px; background:var(--teal);}
+
+  /* timeline */
+  .timeline-card .th-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .switch-row{display:flex; align-items:center; gap:9px;}
+  .switch-label{font-size:12px; color:var(--text-dim);}
+  .switch{position:relative; width:34px; height:19px; flex:0 0 auto;}
+  .switch input{opacity:0; width:100%; height:100%; margin:0; position:absolute; cursor:pointer;}
+  .switch .track{position:absolute; inset:0; background:var(--border); border-radius:999px; transition:background .15s;}
+  .switch .knob{position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%; background:var(--text-dim); transition:transform .15s, background .15s;}
+  .switch input:checked + .track{background:var(--violet-soft); border:1px solid rgba(124,106,240,.5);}
+  .switch input:checked ~ .knob{transform:translateX(15px); background:var(--violet);}
+
+  .timeline-list{list-style:none; margin:0; padding:0;}
+  .step{display:flex; gap:0; position:relative;}
+  .gutter{width:26px; flex:0 0 26px; display:flex; justify-content:center; position:relative;}
+  .gutter .node{width:10px; height:10px; border-radius:50%; background:var(--border); margin-top:5px; z-index:1; box-shadow:0 0 0 4px var(--panel);}
+  .gutter::after{content:''; position:absolute; top:15px; bottom:-16px; width:2px; background:var(--border);}
+  .step:last-child .gutter::after{display:none;}
+  .step.done .node{background:var(--teal); box-shadow:0 0 0 4px var(--panel), 0 0 0 6px var(--teal-soft);}
+  .step-body{flex:1; padding-bottom:20px; min-width:0;}
+
+  .step-toggle{width:100%; display:flex; align-items:center; gap:10px; background:none; border:none; padding:0; text-align:left; color:var(--text);}
+  .step-toggle .label{font-size:14.5px; font-weight:600;}
+  .step-toggle .chips{display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; justify-content:flex-end;}
+  .chevron{color:var(--text-faint); font-size:12px; transition:transform .2s; flex:0 0 auto;}
+  .step-toggle.open .chevron{transform:rotate(180deg);}
+
+  .details{display:grid; grid-template-rows:0fr; transition:grid-template-rows .22s ease;}
+  .details.open{grid-template-rows:1fr;}
+  .details-inner{overflow:hidden;}
+  .details-body{padding-top:10px; font-size:13px; color:var(--text-dim); line-height:1.55;}
+  .details-body ul{margin:4px 0 0; padding-left:18px;}
+  .details-body li{margin:2px 0;}
+  .source-chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+
+  /* loop fold */
+  .loop-wrap{border-left:2px dashed var(--border); margin:10px 0 0 4px; padding-left:18px;}
+  .loop-item{position:relative; margin-bottom:10px;}
+  .loop-item:last-child{margin-bottom:0;}
+  .loop-row{width:100%; display:flex; align-items:center; gap:9px; background:var(--panel-alt); border:1px solid var(--border); border-radius:8px; padding:9px 12px; text-align:left; color:var(--text);}
+  .loop-row .sq{width:8px; height:8px; border-radius:2px; flex:0 0 auto; background:var(--border);}
+  .loop-row.revise .sq{background:var(--amber);}
+  .loop-row.approved .sq{background:var(--teal);}
+  .loop-label{font-size:13px; font-weight:500;}
+  .verdict{font-family:var(--font-mono); font-size:10.5px; padding:2px 7px; border-radius:999px;}
+  .verdict.revise{color:var(--amber); background:var(--amber-soft); border:1px solid rgba(245,166,35,.4);}
+  .verdict.approved{color:var(--teal); background:var(--teal-soft); border:1px solid rgba(51,214,166,.4);}
+  .loop-row .dur{margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--text-faint);}
+  .loop-details{padding:10px 4px 2px 4px; font-size:12.5px; color:var(--text-dim);}
+  .reviewer-note{font-style:italic; color:var(--text); border-left:2px solid var(--border); padding-left:10px; margin-bottom:8px;}
+
+  /* legacy flat view */
+  .legacy-note{font-size:12px; color:var(--amber); background:var(--amber-soft); border:1px solid rgba(245,166,35,.35); border-radius:8px; padding:8px 12px; margin-bottom:10px;}
+  .legacy-card{background:var(--panel-alt); border:1px solid var(--border); border-radius:8px; padding:11px 13px; margin-bottom:8px; display:flex; align-items:center; gap:10px;}
+  .legacy-card .lbl{font-size:13px;}
+  .legacy-card .loop-tag{margin-left:auto; font-family:var(--font-mono); font-size:10.5px; color:var(--violet);}
+
+  /* report */
+  .report-card .rh{display:flex; align-items:center; justify-content:space-between;}
+  .copy-btn{background:var(--panel-alt); border:1px solid var(--border); color:var(--text); font-size:12.5px; padding:7px 13px; border-radius:7px; display:flex; align-items:center; gap:6px;}
+  .copy-btn:hover{border-color:var(--violet);}
+  .sample-note{font-size:11.5px; color:var(--text-faint); margin-top:2px;}
+  .tldr{margin-top:16px; background:var(--violet-soft); border:1px solid rgba(124,106,240,.3); border-radius:8px; padding:14px 16px;}
+  .tldr .eyebrow{color:var(--violet);}
+  .tldr p{margin-top:6px; font-size:13.5px; line-height:1.6; color:var(--text);}
+  .report-body{margin-top:22px; font-size:14px; line-height:1.7; color:var(--text-dim);}
+  .report-body h1{font-size:22px; color:var(--text); margin-bottom:14px;}
+  .report-body h2{font-size:16px; color:var(--text); margin:22px 0 8px;}
+  .report-body h3{font-size:13.5px; color:var(--text); margin:14px 0 6px;}
+
+  @media (prefers-reduced-motion: reduce){
+    .details, .chevron, .switch .knob, .switch .track{transition:none;}
+    .dot.running{animation:none;}
+  }
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.35;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="mark">🔬</span> Research Assistant</div>
+  <span class="badge-lg">Powered by LangGraph</span>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <section class="card">
+      <div class="eyebrow">Ask a research question</div>
+      <textarea>What are the latest breakthroughs in quantum computing?</textarea>
+      <div class="tip">Tip: Press ⌘/Ctrl + Enter to run</div>
+      <button class="run-btn">Run research →</button>
+    </section>
+
+    <section class="card">
+      <div class="eyebrow" style="margin-bottom:12px;">Recent runs</div>
+
+      <div class="run-card">
+        <div class="q">What are the latest breakthroughs in quantum computing?</div>
+        <div class="run-meta">
+          <span class="dot done"></span><span class="run-time">Done · 12:01 PM</span>
+          <span class="chip" style="margin-left:auto;">2m 14s</span><span class="chip">3 loops</span>
+        </div>
+      </div>
+
+      <div class="run-card">
+        <div class="q">What are the latest breakthroughs in quantum computing?</div>
+        <div class="run-meta">
+          <span class="dot done"></span><span class="run-time">Done · 11:40 AM</span>
+          <span class="chip" style="margin-left:auto;">1m 52s</span><span class="chip">2 loops</span>
+        </div>
+      </div>
+
+      <div class="run-card">
+        <div class="q">What are the latest breakthroughs in quantum computing?</div>
+        <div class="run-meta">
+          <span class="dot failed"></span><span class="run-time">Failed · 11:38 AM</span>
+        </div>
+        <div class="fail-reason">Web search timed out after 30s — retry or narrow the question.</div>
+      </div>
+
+      <div class="run-card">
+        <div class="q">How is AI changing drug discovery?</div>
+        <div class="run-meta">
+          <span class="dot running"></span><span class="run-time">Running · loop 1</span>
+        </div>
+      </div>
+    </section>
+  </aside>
+
+  <section class="run-panel">
+
+    <div class="banner" id="banner">
+      <span>New: repeated refinement steps now fold into one block. Use the toggle below to compare with the old, always-expanded log.</span>
+      <button aria-label="Dismiss" onclick="document.getElementById('banner').remove()">×</button>
+    </div>
+
+    <div class="card run-header">
+      <div class="eyebrow">Current run</div>
+      <div class="q-title">What are the latest breakthroughs in quantum computing?</div>
+      <div class="meta-row">
+        <span class="status-pill done">● Done</span>
+        <span class="stat">⏱ <b>2m 14s</b></span>
+        <span class="stat">🔗 <b>14</b> sources</span>
+        <span class="stat">🔁 <b>3</b> refinement loops</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-seg"></div><div class="progress-seg"></div><div class="progress-seg"></div><div class="progress-seg"></div><div class="progress-seg"></div>
+      </div>
+    </div>
+
+    <div class="card timeline-card">
+      <div class="th-row">
+        <h3 style="font-size:14px;">Live progress</h3>
+        <div class="switch-row">
+          <span class="switch-label">Fold repeated steps</span>
+          <label class="switch">
+            <input type="checkbox" id="foldToggle" checked>
+            <span class="track"></span>
+            <span class="knob"></span>
+          </label>
+        </div>
+      </div>
+
+      <ol class="timeline-list">
+
+        <li class="step done">
+          <div class="gutter"><span class="node"></span></div>
+          <div class="step-body">
+            <button class="step-toggle" data-target="d-plan" aria-expanded="false">
+              <span class="label">Planning sub-questions</span>
+              <span class="chips"><span class="chip">3 sub-questions</span></span>
+              <span class="chevron">⌄</span>
+            </button>
+            <div class="details" id="d-plan"><div class="details-inner"><div class="details-body">
+              Split into three lines of inquiry:
+              <ul>
+                <li>Which hardware platforms advanced most in 2025–2026?</li>
+                <li>What software or error-mitigation techniques enabled quantum advantage?</li>
+                <li>Where will commercial applications appear first?</li>
+              </ul>
+            </div></div></div>
+          </div>
+        </li>
+
+        <li class="step done">
+          <div class="gutter"><span class="node"></span></div>
+          <div class="step-body">
+            <button class="step-toggle" data-target="d-search" aria-expanded="false">
+              <span class="label">Searching the web</span>
+              <span class="chips"><span class="chip">14 sources</span></span>
+              <span class="chevron">⌄</span>
+            </button>
+            <div class="details" id="d-search"><div class="details-inner"><div class="details-body">
+              14 sources retrieved across hardware, software, and industry coverage.
+              <div class="source-chips">
+                <span class="chip">nature.com</span><span class="chip">ibm.com/quantum</span><span class="chip">arxiv.org</span><span class="chip">quantamagazine.org</span><span class="chip">ionq.com</span>
+              </div>
+            </div></div></div>
+          </div>
+        </li>
+
+        <li class="step done">
+          <div class="gutter"><span class="node"></span></div>
+          <div class="step-body">
+            <button class="step-toggle" data-target="d-draft" aria-expanded="false">
+              <span class="label">Drafting report</span>
+              <span class="chips"><span class="chip">5 sections · ~1,240 words</span></span>
+              <span class="chevron">⌄</span>
+            </button>
+            <div class="details" id="d-draft"><div class="details-inner"><div class="details-body">
+              First draft written, covering hardware, software, and early commercial applications.
+            </div></div></div>
+          </div>
+        </li>
+
+        <li class="step done">
+          <div class="gutter"><span class="node"></span></div>
+          <div class="step-body">
+            <button class="step-toggle open" data-target="d-refine" aria-expanded="true">
+              <span class="label">Refinement</span>
+              <span class="chips"><span class="chip violet">×3 iterations</span><span class="chip teal">Approved</span></span>
+              <span class="chevron">⌄</span>
+            </button>
+
+            <div class="details open" id="d-refine"><div class="details-inner"><div class="details-body">
+              <span style="display:block; margin-bottom:2px;">The draft went to the reviewer after each pass. Two revisions were requested before it was approved.</span>
+
+              <!-- folded view -->
+              <div id="refineFolded">
+                <div class="loop-wrap">
+                  <div class="loop-item">
+                    <button class="loop-row revise" data-target="loop-1" aria-expanded="false">
+                      <span class="sq"></span>
+                      <span class="loop-label">Loop 1</span>
+                      <span class="verdict revise">Needs revision</span>
+                      <span class="dur">38s</span>
+                    </button>
+                    <div class="details" id="loop-1"><div class="details-inner"><div class="loop-details">
+                      <p class="reviewer-note">"Hardware section lacks 2026 sources — add trapped-ion updates."</p>
+                      <ul style="margin:0; padding-left:16px;"><li>Searched the web — 6 new sources</li><li>Updated draft — revised section 1.2</li></ul>
+                    </div></div></div>
+                  </div>
+
+                  <div class="loop-item">
+                    <button class="loop-row revise" data-target="loop-2" aria-expanded="false">
+                      <span class="sq"></span>
+                      <span class="loop-label">Loop 2</span>
+                      <span class="verdict revise">Needs revision</span>
+                      <span class="dur">44s</span>
+                    </button>
+                    <div class="details" id="loop-2"><div class="details-inner"><div class="loop-details">
+                      <p class="reviewer-note">"Missing a section on commercial applications."</p>
+                      <ul style="margin:0; padding-left:16px;"><li>Searched the web — 4 new sources</li><li>Updated draft — added section 4</li></ul>
+                    </div></div></div>
+                  </div>
+
+                  <div class="loop-item">
+                    <button class="loop-row approved open" data-target="loop-3" aria-expanded="true">
+                      <span class="sq"></span>
+                      <span class="loop-label">Loop 3</span>
+                      <span class="verdict approved">Approved</span>
+                      <span class="dur">21s</span>
+                    </button>
+                    <div class="details open" id="loop-3"><div class="details-inner"><div class="loop-details">
+                      <p class="reviewer-note">"Comprehensive and well-sourced. Ready to publish."</p>
+                      <ul style="margin:0; padding-left:16px;"><li>Minor copy edits only — no new search needed</li></ul>
+                    </div></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- legacy flat view -->
+              <div id="refineLegacy" style="display:none;">
+                <div class="legacy-note">This is what the original log looked like — every step from every loop, always expanded. It keeps growing as loops increase.</div>
+                <div class="legacy-card"><span class="lbl">Reviewing draft</span><span class="loop-tag">Loop 1</span></div>
+                <div class="legacy-card"><span class="lbl">Searching the web</span><span class="loop-tag">Loop 1</span></div>
+                <div class="legacy-card"><span class="lbl">Drafting report</span><span class="loop-tag">Loop 1</span></div>
+                <div class="legacy-card"><span class="lbl">Reviewing draft</span><span class="loop-tag">Loop 2</span></div>
+                <div class="legacy-card"><span class="lbl">Searching the web</span><span class="loop-tag">Loop 2</span></div>
+                <div class="legacy-card"><span class="lbl">Drafting report</span><span class="loop-tag">Loop 2</span></div>
+                <div class="legacy-card"><span class="lbl">Reviewing draft</span><span class="loop-tag">Loop 3</span></div>
+              </div>
+
+            </div></div></div>
+          </div>
+        </li>
+
+        <li class="step done">
+          <div class="gutter"><span class="node"></span></div>
+          <div class="step-body">
+            <button class="step-toggle" data-target="d-final" aria-expanded="false">
+              <span class="label">Finalising report</span>
+              <span class="chips"></span>
+              <span class="chevron">⌄</span>
+            </button>
+            <div class="details" id="d-final"><div class="details-inner"><div class="details-body">
+              Formatting applied, citations checked, report marked ready.
+            </div></div></div>
+          </div>
+        </li>
+
+      </ol>
+    </div>
+
+    <div class="card report-card">
+      <div class="rh">
+        <div>
+          <h3 style="font-size:15px;">Final report</h3>
+          <div class="sample-note">Sample content shown for layout purposes.</div>
+        </div>
+        <button class="copy-btn" id="copyBtn">📋 Copy</button>
+      </div>
+
+      <div class="tldr">
+        <div class="eyebrow">TL;DR</div>
+        <p>Hardware progress in superconducting, trapped-ion, and photonic qubits, combined with better error mitigation, drove the first real quantum-advantage demonstrations — with data analytics and optimization likely to be the first commercial uses.</p>
+      </div>
+
+      <div class="report-body" id="reportBody">
+        <h1>Latest Breakthroughs in Quantum Computing</h1>
+        <h2>1. Advances in Quantum Processor Architectures</h2>
+        <h3>1.1 Superconducting Qubits</h3>
+        <p>Superconducting platforms continued to scale qubit counts while improving coherence times, narrowing the gap between lab demonstrations and fault-tolerant operation.</p>
+        <h3>1.2 Trapped-Ion Systems</h3>
+        <p>Trapped-ion vendors reported higher gate fidelities and faster entangling operations, making them competitive for near-term error-corrected logical qubits.</p>
+        <h2>2. Software and Error Mitigation</h2>
+        <p>New error-mitigation techniques reduced the noise overhead needed for useful circuits, a key factor in recent quantum-advantage claims.</p>
+      </div>
+    </div>
+
+  </section>
+</div>
+
+<script>
+  document.querySelectorAll('[data-target]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var target = document.getElementById(btn.dataset.target);
+      var isOpen = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!isOpen));
+      btn.classList.toggle('open', !isOpen);
+      target.classList.toggle('open', !isOpen);
+    });
+  });
+
+  var foldToggle = document.getElementById('foldToggle');
+  var folded = document.getElementById('refineFolded');
+  var legacy = document.getElementById('refineLegacy');
+  foldToggle.addEventListener('change', function(){
+    if(foldToggle.checked){ folded.style.display='block'; legacy.style.display='none'; }
+    else { folded.style.display='none'; legacy.style.display='block'; }
+  });
+
+  var copyBtn = document.getElementById('copyBtn');
+  copyBtn.addEventListener('click', function(){
+    var text = document.getElementById('reportBody').innerText;
+    navigator.clipboard.writeText(text).then(function(){
+      var original = copyBtn.innerHTML;
+      copyBtn.innerHTML = '✓ Copied';
+      setTimeout(function(){ copyBtn.innerHTML = original; }, 1500);
+    });
+  });
+</script>
+
+</body>
+</html>
