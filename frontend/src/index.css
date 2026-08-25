@@ -535,9 +535,15 @@ ul { list-style: none; padding: 0; margin: 0; }
   padding: 12px 14px; background: var(--panel-alt);
   cursor: pointer; transition: all .15s ease;
 }
-.run-card:hover, .run-card.active {
+.run-card:hover {
   border-color: var(--violet);
-  background: rgba(23, 27, 39, 0.9);
+  background: var(--panel);
+  box-shadow: var(--card-shadow);
+}
+.run-card.active {
+  border-color: var(--violet);
+  background: var(--violet-soft);
+  box-shadow: 0 0 0 1px var(--violet);
 }
 .run-card-q {
   font-size: 13.5px; color: var(--text); font-weight: 500;
@@ -898,8 +904,8 @@ ul { list-style: none; padding: 0; margin: 0; }
 .sources-section { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
 .sources-section .eyebrow { margin-bottom: 12px; display: block; }
 .sources-list { display: flex; flex-direction: column; gap: 6px; }
-.sources-list a { font-size: 13px; color: #818cf8; text-decoration: none; word-break: break-all; }
-.sources-list a:hover { text-decoration: underline; color: #a5b4fc; }
+.sources-list a { font-size: 13px; color: var(--violet); text-decoration: none; word-break: break-all; }
+.sources-list a:hover { text-decoration: underline; color: var(--violet-hover); }
 
 /* ── Placeholder & Suggestions ────────────────────────────────────  */
 .placeholder {
@@ -915,6 +921,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 48px 32px;
+  box-shadow: var(--card-shadow);
 }
 .placeholder-hero {
   text-align: center;
@@ -963,8 +970,8 @@ ul { list-style: none; padding: 0; margin: 0; }
 .suggestion-card:hover {
   border-color: var(--violet);
   transform: translateY(-2px);
-  background: rgba(124,106,240,.08);
-  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  background: var(--violet-soft);
+  box-shadow: var(--card-shadow);
 }
 .suggestion-icon { font-size: 22px; flex-shrink: 0; padding-top: 2px; }
 .suggestion-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
