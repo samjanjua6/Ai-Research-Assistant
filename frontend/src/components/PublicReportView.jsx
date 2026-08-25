@@ -14,6 +14,7 @@ import {
   SectionHeading,
   CodeBlock,
   TableBlock,
+  normalizeMarkdownTables,
 } from '../utils/sectionUtils'
 
 function normalizeMarkdown(text) {
