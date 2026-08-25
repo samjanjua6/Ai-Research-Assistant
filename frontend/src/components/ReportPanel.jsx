@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { ShareModal } from './ShareModal'
 
 function normalizeMarkdown(text) {
   if (!text) return ''
@@ -285,9 +286,10 @@ html, body {
 </html>`
 }
 
-export default function ReportPanel({ report, question }) {
+export default function ReportPanel({ report, question, runId }) {
   const [copied,    setCopied]    = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [showShare, setShowShare] = useState(false)
 
   const normalizedReport = useMemo(() => {
     return normalizeMarkdown(report?.final_report || '')
@@ -321,23 +323,12 @@ export default function ReportPanel({ report, question }) {
   }, [report])
 
   // ── Export PDF ─────────────────────────────────────────────────
-  //
-  // Strategy: build a fully-styled HTML document → load it into a hidden
-  // iframe (which gives the browser a complete, real document to lay out) →
-  // call iframe.contentWindow.print() → the browser opens its native print
-  // dialog where the user chooses "Save as PDF".
-  //
-  // This is the approach used by Notion, Linear, Google Docs, etc.
-  // html2pdf / html2canvas were causing blank output because dynamically
-  // injected DOM nodes aren't laid out in time for canvas capture.
-  //
   const handleExportPDF = useCallback(async () => {
     setExporting(true)
     let iframe = null
     let blobUrl = null
 
     try {
-      // Dynamically import marked (lazy — not in the main bundle)
       const { marked } = await import('marked')
 
       const html = buildPDFDocument({
@@ -348,36 +339,30 @@ export default function ReportPanel({ report, question }) {
         markedFn:    marked,
       })
 
-      // Build a blob URL from the full HTML document
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
       blobUrl = URL.createObjectURL(blob)
 
-      // Hidden iframe — the browser renders the full document inside it
       iframe = document.createElement('iframe')
       iframe.style.cssText =
         'position:fixed;top:-1px;left:-1px;width:1px;height:1px;' +
         'border:none;opacity:0;pointer-events:none;'
       document.body.appendChild(iframe)
 
-      // Wait for the iframe to fully load & render
       await new Promise((resolve, reject) => {
-        iframe.onload  = () => setTimeout(resolve, 700)   // extra 700ms for layout + fonts
+        iframe.onload  = () => setTimeout(resolve, 700)
         iframe.onerror = reject
         iframe.src = blobUrl
       })
 
-      // Open the native print dialog — user picks "Save as PDF"
       iframe.contentWindow.focus()
       iframe.contentWindow.print()
 
-      // Clean up after print dialog is dismissed
       const cleanup = () => {
         try { if (iframe) document.body.removeChild(iframe) } catch (_) {}
         try { if (blobUrl) URL.revokeObjectURL(blobUrl) } catch (_) {}
         iframe  = null
         blobUrl = null
       }
-      // afterprint fires when the dialog closes; fall back to a timeout
       try { iframe.contentWindow.addEventListener('afterprint', cleanup) } catch (_) {}
       setTimeout(cleanup, 60_000)
 
@@ -391,6 +376,8 @@ export default function ReportPanel({ report, question }) {
     }
   }, [report, normalizedReport, question])
 
+  const targetRunId = runId || report?.id
+
   return (
     <div className="card animate-in">
       <div className="report-header-row">
@@ -398,6 +385,17 @@ export default function ReportPanel({ report, question }) {
           <h3 className="report-title">Final report</h3>
         </div>
         <div className="report-actions">
+          {/* Share button */}
+          {targetRunId && (
+            <button
+              className="copy-btn share-btn"
+              onClick={() => setShowShare(true)}
+              title="Share report with a public link"
+            >
+              🔗 Share
+            </button>
+          )}
+
           <button
             className={`copy-btn pdf-btn${exporting ? ' pdf-btn-loading' : ''}`}
             onClick={handleExportPDF}
@@ -443,6 +441,14 @@ export default function ReportPanel({ report, question }) {
             ))}
           </ul>
         </div>
+      )}
+
+      {showShare && targetRunId && (
+        <ShareModal
+          runId={targetRunId}
+          question={question}
+          onClose={() => setShowShare(false)}
+        />
       )}
     </div>
   )

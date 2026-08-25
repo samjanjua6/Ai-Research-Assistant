@@ -76,6 +76,11 @@ class ResearchRun(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     sources: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     loop_count: Mapped[int] = mapped_column(Integer, default=0)
+    share_token: Mapped[str | None] = mapped_column(
+        String(32), unique=True, nullable=True, index=True
+    )
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    views_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now
     )

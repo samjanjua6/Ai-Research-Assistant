@@ -110,6 +110,28 @@ export async function stopRun(runId) {
   return res.json()
 }
 
+export async function shareRun(runId, isPublic = true) {
+  const res = await fetch(`${BASE}/research/${runId}/share`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ is_public: isPublic }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json() // { share_token, share_url, is_public, views_count }
+}
+
+export async function fetchPublicReport(shareToken) {
+  const res = await fetch(`${BASE}/public/reports/${encodeURIComponent(shareToken)}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json() // { id, question, status, final_report, summary, sources, loop_count, created_at, views_count, author_name }
+}
+
 // ── SSE stream ───────────────────────────────────────────────────
 
 /**

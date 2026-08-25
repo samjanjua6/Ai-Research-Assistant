@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 import uuid
 from typing import AsyncGenerator
 
@@ -25,9 +26,11 @@ from app.agent.state import GraphState
 from app.db.crud import (
     create_run,
     get_run,
+    get_run_by_share_token,
     get_step_logs,
     list_runs,
     log_step,
+    update_run_share_status,
     update_run_status,
 )
 
@@ -38,6 +41,7 @@ from app.api.deps import get_current_user
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/research", tags=["research"])
+public_router = APIRouter(prefix="/public", tags=["public"])
 
 
 # ── Active cancellations registry ───────────────────────────────
@@ -70,12 +74,39 @@ class RunDetailResponse(BaseModel):
     summary: str | None
     sources: list[str] | None
     loop_count: int
+    share_token: str | None = None
+    is_public: bool = False
+    views_count: int = 0
     created_at: str
     finished_at: str | None
     error: str | None = None
 
     class Config:
         from_attributes = True
+
+
+class ShareRunRequest(BaseModel):
+    is_public: bool = True
+
+
+class ShareRunResponse(BaseModel):
+    share_token: str | None
+    share_url: str | None
+    is_public: bool
+    views_count: int = 0
+
+
+class PublicReportResponse(BaseModel):
+    id: str
+    question: str
+    status: str
+    final_report: str | None
+    summary: str | None
+    sources: list[str] | None
+    loop_count: int
+    created_at: str
+    views_count: int = 0
+    author_name: str | None = None
 
 
 # ── Background task: run the graph ───────────────────────────────
@@ -355,4 +386,72 @@ async def stream_research_run(
             await asyncio.sleep(1.5)
 
     return EventSourceResponse(event_generator())
+
+
+@router.post("/{run_id}/share", response_model=ShareRunResponse)
+async def toggle_share_research_run(
+    run_id: uuid.UUID,
+    payload: ShareRunRequest = ShareRunRequest(),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Enable or disable public sharing for a research run."""
+    run = await get_run(db, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.user_id and run.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to share this run")
+
+    share_token = run.share_token
+    if payload.is_public and not share_token:
+        # Generate clean 8-character URL-safe token (e.g. "aB9_xZ1q")
+        share_token = secrets.token_urlsafe(6)
+
+    updated_run = await update_run_share_status(
+        db,
+        run_id,
+        is_public=payload.is_public,
+        share_token=share_token,
+    )
+    if not updated_run:
+        raise HTTPException(status_code=500, detail="Failed to update share status")
+
+    return ShareRunResponse(
+        share_token=updated_run.share_token if updated_run.is_public else None,
+        share_url=f"/r/{updated_run.share_token}" if updated_run.is_public and updated_run.share_token else None,
+        is_public=updated_run.is_public,
+        views_count=updated_run.views_count or 0,
+    )
+
+
+# ── Public Report Router (No authentication required) ──────────────
+
+@public_router.get("/reports/{share_token}", response_model=PublicReportResponse)
+async def get_public_report(
+    share_token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch a public research report by its unique share token."""
+    run = await get_run_by_share_token(db, share_token, increment_views=True)
+    if not run:
+        raise HTTPException(
+            status_code=404,
+            detail="Report not found or has been made private by author",
+        )
+
+    author_name = run.user.name if run.user else None
+
+    return PublicReportResponse(
+        id=str(run.id),
+        question=run.question,
+        status=run.status.value,
+        final_report=run.final_report,
+        summary=run.summary,
+        sources=run.sources or [],
+        loop_count=run.loop_count,
+        created_at=run.created_at.isoformat(),
+        views_count=run.views_count or 0,
+        author_name=author_name,
+    )
+
 

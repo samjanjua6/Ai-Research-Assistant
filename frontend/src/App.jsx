@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useResearch } from './hooks/useResearch'
 import { AuthModal } from './components/AuthModal'
@@ -10,11 +10,19 @@ import RunHeader        from './components/RunHeader'
 import ProgressTimeline from './components/ProgressTimeline'
 import ReportPanel      from './components/ReportPanel'
 import Placeholder      from './components/Placeholder'
+import PublicReportView from './components/PublicReportView'
+
+function getShareTokenFromPath() {
+  if (typeof window === 'undefined') return null
+  const match = window.location.pathname.match(/^\/r\/([a-zA-Z0-9_-]+)/)
+  return match ? match[1] : null
+}
 
 export default function App() {
   const { user, loading: authLoading } = useAuth()
   const { phase, steps, report, history, error, submit, stop, viewRun } = useResearch(user)
 
+  const [shareToken,     setShareToken]     = useState(getShareTokenFromPath)
   const [activeRunId,    setActiveRunId]    = useState(null)
   const [activeQuestion, setActiveQuestion] = useState(null)
   const [formQuestion,   setFormQuestion]   = useState('')
@@ -24,6 +32,15 @@ export default function App() {
   const [pendingQuestion,  setPendingQuestion]  = useState(null)
   const [showAuthModal,    setShowAuthModal]    = useState(false)
   const [authDefaultTab,   setAuthDefaultTab]   = useState('login')
+
+  // Listen to browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      setShareToken(getShareTokenFromPath())
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
 
   // ── Handlers ─────────────────────────────────────────────────
   const handleSubmit = (question) => {
@@ -66,6 +83,33 @@ export default function App() {
     handleSubmit(question)
   }
 
+  const handleForkQuestion = (question) => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/')
+    }
+    setShareToken(null)
+    setFormQuestion(question)
+    handleSubmit(question)
+  }
+
+  const handleGoHome = () => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/')
+    }
+    setShareToken(null)
+  }
+
+  // If visiting a public share URL (/r/:token)
+  if (shareToken) {
+    return (
+      <PublicReportView
+        shareToken={shareToken}
+        onForkQuestion={handleForkQuestion}
+        onGoHome={handleGoHome}
+      />
+    )
+  }
+
   const isLoading  = phase === 'streaming'
   const hasRun     = phase !== 'idle' || steps.length > 0 || report !== null
   const showReport = phase === 'done' && report
@@ -76,7 +120,7 @@ export default function App() {
       <div className="auth-splash">
         <div className="auth-splash-inner">
           <span className="topbar-mark">🔬</span>
-          <p>Loading…</p>
+          <p>Checking session…</p>
         </div>
       </div>
     )
@@ -87,44 +131,28 @@ export default function App() {
       <Header />
 
       <div className="layout">
-        {/* ── Left sidebar ── */}
+        {/* Left column — question form + run history */}
         <aside className="sidebar">
           <QuestionForm
+            question={formQuestion}
+            onQuestionChange={setFormQuestion}
             onSubmit={handleSubmit}
-            onStop={stop}
             isLoading={isLoading}
-            error={phase === 'error' ? error : null}
-            initialQuestion={formQuestion}
           />
-
-          {user ? (
-            <HistoryPanel
-              runs={history}
-              activeRunId={activeRunId}
-              onSelect={handleSelectRun}
-              onRetry={handleSubmit}
-            />
-          ) : (
-            <div className="history-guest-prompt">
-              <p className="history-guest-text">
-                <button
-                  className="link-btn"
-                  onClick={() => { setAuthDefaultTab('signup'); setShowAuthModal(true) }}
-                >
-                  Create a free account
-                </button>
-                {' '}to save your research history.
-              </p>
-            </div>
-          )}
+          <HistoryPanel
+            runs={history}
+            activeRunId={activeRunId}
+            onSelectRun={handleSelectRun}
+            onRetry={handleSubmit}
+          />
         </aside>
 
-        {/* ── Right run panel ── */}
-        <section className="run-panel">
+        {/* Right column — run details or placeholder */}
+        <section className="run-panel" aria-label="Research status and report">
 
-          {/* Info banner — shown once */}
+          {/* Banner: folded timeline explanation */}
           {showBanner && hasRun && (
-            <div className="info-banner animate-in">
+            <div className="info-banner animate-in" role="status">
               <span>
                 Refinement loops now fold into one block.
                 Use the toggle in the timeline to compare with the flat log.
@@ -155,7 +183,13 @@ export default function App() {
           <ProgressTimeline steps={steps} phase={phase} />
 
           {/* Final report */}
-          {showReport && <ReportPanel report={report} question={activeQuestion} />}
+          {showReport && (
+            <ReportPanel
+              report={report}
+              question={activeQuestion}
+              runId={activeRunId || report?.id}
+            />
+          )}
 
           {/* Empty state with suggestions */}
           {!hasRun && <Placeholder onSelectSuggestion={handleSuggestion} />}

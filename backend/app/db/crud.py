@@ -104,6 +104,46 @@ async def update_run_status(
     return run
 
 
+async def update_run_share_status(
+    db: AsyncSession,
+    run_id: uuid.UUID,
+    *,
+    is_public: bool,
+    share_token: str | None = None,
+) -> ResearchRun | None:
+    run = await get_run(db, run_id)
+    if not run:
+        return None
+    run.is_public = is_public
+    if share_token is not None:
+        run.share_token = share_token
+    await db.commit()
+    await db.refresh(run)
+    return run
+
+
+async def get_run_by_share_token(
+    db: AsyncSession,
+    share_token: str,
+    *,
+    increment_views: bool = False,
+) -> ResearchRun | None:
+    from sqlalchemy.orm import joinedload
+
+    result = await db.execute(
+        select(ResearchRun)
+        .options(joinedload(ResearchRun.user))
+        .where(ResearchRun.share_token == share_token)
+        .where(ResearchRun.is_public == True)  # noqa: E712
+    )
+    run = result.scalar_one_or_none()
+    if run and increment_views:
+        run.views_count = (run.views_count or 0) + 1
+        await db.commit()
+        await db.refresh(run)
+    return run
+
+
 # ── StepLog helpers ───────────────────────────────────────────────
 
 async def log_step(
