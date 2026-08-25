@@ -66,7 +66,7 @@ async def get_run(db: AsyncSession, run_id: uuid.UUID) -> ResearchRun | None:
 async def list_runs(
     db: AsyncSession,
     user_id: uuid.UUID | None = None,
-    limit: int = 20,
+    limit: int = 50,
 ) -> list[ResearchRun]:
     q = select(ResearchRun).order_by(desc(ResearchRun.created_at)).limit(limit)
     if user_id is not None:

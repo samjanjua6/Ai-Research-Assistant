@@ -528,6 +528,125 @@ ul { list-style: none; padding: 0; margin: 0; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── History header & search ────────────────────────────────────── */
+.history-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.history-match-badge {
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--violet);
+  background: var(--violet-soft);
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 106, 240, 0.3);
+  text-transform: none;
+}
+.history-filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.history-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.history-search-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 13px;
+  color: var(--text-faint);
+  pointer-events: none;
+  line-height: 1;
+}
+.history-search-input {
+  width: 100%;
+  padding: 8px 30px 8px 30px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  outline: none;
+  transition: all .15s ease;
+}
+.history-search-input::placeholder {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.history-search-input:focus {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 1px var(--violet);
+  background: var(--panel);
+}
+.history-search-clear {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 4px;
+}
+.history-search-clear:hover {
+  color: var(--text);
+  background: var(--border);
+}
+.history-filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.history-filter-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.history-filter-pill:hover {
+  color: var(--text);
+  border-color: var(--border-hover);
+}
+.history-filter-pill.active {
+  color: var(--violet);
+  background: var(--violet-soft);
+  border-color: var(--violet);
+  font-weight: 600;
+}
+.search-highlight {
+  background: rgba(124, 106, 240, 0.28);
+  color: inherit;
+  font-weight: 600;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.history-no-matches {
+  text-align: center;
+  padding: 20px 8px;
+  color: var(--text-dim);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
 /* ── History run cards ───────────────────────────────────────────  */
 .history-stack { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
 .run-card {

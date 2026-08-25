@@ -58,6 +58,7 @@ class RunSummaryResponse(BaseModel):
     id: str
     question: str
     status: str
+    summary: str | None = None
     created_at: str
     loop_count: int = 0
     error: str | None = None
@@ -287,6 +288,7 @@ async def list_research_runs(
                 id=str(r.id),
                 question=r.question,
                 status=r.status.value,
+                summary=r.summary,
                 created_at=r.created_at.isoformat(),
                 loop_count=r.loop_count,
                 error=error_msg,
