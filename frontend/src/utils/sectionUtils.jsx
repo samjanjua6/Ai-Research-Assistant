@@ -175,6 +175,58 @@ export function CodeBlock({ children, ...props }) {
 }
 
 /**
+ * Extracts and sanitizes clean text from a table cell (strips tooltip markup, converts badges to [N], escapes pipes).
+ */
+function extractCleanCellText(cellElement) {
+  if (!cellElement) return ''
+  const clone = cellElement.cloneNode(true)
+
+  // Remove tooltip popovers or hidden auxiliary elements
+  clone.querySelectorAll('.citation-tooltip, .tooltip, [role="tooltip"]').forEach((el) => el.remove())
+
+  // Format citation badges cleanly as [N]
+  clone.querySelectorAll('.citation-badge').forEach((badge) => {
+    const num = badge.querySelector('.citation-num')?.innerText || badge.innerText || ''
+    const textNode = document.createTextNode(`[${num.trim()}]`)
+    badge.replaceWith(textNode)
+  })
+
+  // Get raw text content and collapse any inner newlines and redundant spaces into a single space
+  let text = clone.innerText || clone.textContent || ''
+  text = text.replace(/\r?\n+/g, ' ').replace(/\s+/g, ' ').trim()
+
+  // Escape markdown pipes
+  return text.replace(/\|/g, '\\|')
+}
+
+/**
+ * Converts HTML <table> DOM into a valid, beautifully formatted Markdown table with headers and separators.
+ */
+function convertTableElementToMarkdown(tableEl) {
+  const trElements = Array.from(tableEl.querySelectorAll('tr'))
+  if (!trElements.length) return ''
+
+  const rows = []
+
+  trElements.forEach((tr, index) => {
+    const cellElements = Array.from(tr.querySelectorAll('th, td'))
+    if (!cellElements.length) return
+
+    const rowText = `| ${cellElements.map(extractCleanCellText).join(' | ')} |`
+    rows.push(rowText)
+
+    // Append markdown delimiter separator row under the table header row
+    const isHeaderRow = tr.querySelector('th') !== null || index === 0
+    if (isHeaderRow && index === 0) {
+      const separator = `| ${cellElements.map(() => '---').join(' | ')} |`
+      rows.push(separator)
+    }
+  })
+
+  return rows.join('\n')
+}
+
+/**
  * TableBlock component with copy button.
  */
 export function TableBlock({ children, ...props }) {
@@ -183,15 +235,8 @@ export function TableBlock({ children, ...props }) {
 
   const handleCopyTable = () => {
     if (!tableRef.current) return
-    const rows = Array.from(tableRef.current.querySelectorAll('tr'))
-    const tableText = rows
-      .map((row) => {
-        const cells = Array.from(row.querySelectorAll('th, td')).map((c) =>
-          c.innerText.trim().replace(/\|/g, '\\|')
-        )
-        return `| ${cells.join(' | ')} |`
-      })
-      .join('\n')
+    const tableEl = tableRef.current.querySelector('table') || tableRef.current
+    const tableText = convertTableElementToMarkdown(tableEl)
 
     navigator.clipboard.writeText(tableText).then(() => {
       setCopied(true)
@@ -207,7 +252,7 @@ export function TableBlock({ children, ...props }) {
           type="button"
           className="table-copy-btn"
           onClick={handleCopyTable}
-          title="Copy table as Markdown"
+          title="Copy table as valid Markdown"
         >
           {copied ? '✓ Copied table' : '📋 Copy table'}
         </button>
