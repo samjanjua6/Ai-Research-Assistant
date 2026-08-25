@@ -54,25 +54,8 @@ def clean_markdown_tables(text: str) -> str:
     cleaned = re.sub(r'\|[ \t]*\|(?=[:\-])', '|\n|', cleaned)
     cleaned = re.sub(r'\|[ \t]*\|(?=[^\n|:\-])', '|\n|', cleaned)
 
-    # 3. Ensure table start has a blank line before it if preceded by text
-    cleaned = re.sub(r'([^\n])\n(\|[^\n]+\|)', r'\1\n\n\2', cleaned)
-
-    # 4. Auto-insert missing header delimiter `| --- | --- |` if omitted
-    def _fix_missing_delimiter(match: re.Match) -> str:
-        prefix = match.group(1) or ""
-        header_row = match.group(2)
-        first_data_row = match.group(3)
-        cols = [c.strip() for c in header_row.strip('|').split('|')]
-        if len(cols) > 0:
-            delimiter = "|" + "|".join(" --- " for _ in cols) + "|"
-            return f"{prefix}{header_row}\n{delimiter}\n{first_data_row}"
-        return match.group(0)
-
-    cleaned = re.sub(
-        r'(^|\n\n)(\|[^\n|]+(?:\|[^\n|]+)+\|)\n(?!\s*\|[\s\-:|]+\|)(\|[^\n|]+(?:\|[^\n|]+)+\|)',
-        _fix_missing_delimiter,
-        cleaned,
-    )
+    # 3. Ensure table start has a blank line before it if preceded by non-table text
+    cleaned = re.sub(r'([^\n|])\n(\|[^\n]+\|\r?\n\|[-: |]+\|)', r'\1\n\n\2', cleaned)
 
     return cleaned
 

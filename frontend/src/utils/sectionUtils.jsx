@@ -17,35 +17,21 @@ export function slugifyHeading(text) {
  * Normalizes and fixes markdown tables in text:
  * 1. Strips dangling solitary pipe lines (e.g. `\n|\n` or `\n|`)
  * 2. Un-glues single-line double-pipe table rows
- * 3. Auto-inserts missing header delimiter `| --- | --- |` if omitted
- * 4. Ensures table has blank line before it
+ * 3. Ensures tables have a blank line before them so markdown parsers don't merge them with preceding paragraphs
  */
 export function normalizeMarkdownTables(text) {
   if (!text) return ''
   let cleaned = text
 
-  // 1. Remove dangling solitary pipe lines at end or between lines
+  // 1. Remove dangling solitary pipe lines
   cleaned = cleaned.replace(/\n\|[ \t]*(?=\n|$)/g, '')
 
   // 2. Un-glue single-line double-pipe rows
   cleaned = cleaned.replace(/\|[ \t]*\|(?=[:\-])/g, '|\n|')
   cleaned = cleaned.replace(/\|[ \t]*\|(?=[^\n|:\-])/g, '|\n|')
 
-  // 3. Ensure table start has a blank line before it if preceded by text
-  cleaned = cleaned.replace(/([^\n])\n(\|[^\n]+\|)/g, '$1\n\n$2')
-
-  // 4. Auto-insert missing header delimiter row if omitted
-  cleaned = cleaned.replace(
-    /(^|\n\n)(\|[^\n|]+(?:\|[^\n|]+)+\|)\n(?!\s*\|[\s\-:|]+\|)(\|[^\n|]+(?:\|[^\n|]+)+\|)/g,
-    (match, prefix, headerRow, firstDataRow) => {
-      const colCount = headerRow.split('|').length - 2
-      if (colCount > 0) {
-        const delimiter = '|' + Array(colCount).fill(' --- ').join('|') + '|'
-        return `${prefix}${headerRow}\n${delimiter}\n${firstDataRow}`
-      }
-      return match
-    }
-  )
+  // 3. Ensure table start has a blank line before it if preceded by non-table text
+  cleaned = cleaned.replace(/([^\n|])\n(\|[^\n]+\|\r?\n\|[-: |]+\|)/g, '$1\n\n$2')
 
   return cleaned
 }
