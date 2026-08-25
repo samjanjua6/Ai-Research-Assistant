@@ -2,6 +2,13 @@ import { useState, useCallback, useMemo } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ShareModal } from './ShareModal'
+import {
+  linkifyCitations,
+  countCitationFrequencies,
+  extractDomain,
+  getFaviconUrl,
+  CitationBadge,
+} from '../utils/citations'
 
 function normalizeMarkdown(text) {
   if (!text) return ''
@@ -22,9 +29,23 @@ function escapeHtml(str) {
 
 // ── Full styled PDF HTML document ────────────────────────────────────────────
 function buildPDFDocument({ question, summary, finalReport, sources, markedFn }) {
-  const reportHtml = markedFn(finalReport || '')
+  let linkedReport = finalReport || ''
+  if (sources?.length) {
+    linkedReport = linkedReport.replace(/\[(\d+)\]/g, (m, num) => {
+      const idx = parseInt(num, 10) - 1
+      const url = sources[idx]
+      if (url) {
+        return `[<sup>[${num}]</sup>](${url})`
+      }
+      return `<sup>[${num}]</sup>`
+    })
+  }
+
+  const reportHtml = markedFn(linkedReport)
   const date = new Date().toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   })
 
   const summaryHtml = summary
@@ -35,10 +56,15 @@ function buildPDFDocument({ question, summary, finalReport, sources, markedFn })
     : ''
 
   const sourcesHtml = sources?.length
-    ? `<div class="sources-section">
+    ? `<div class="sources-section" id="sources">
         <div class="section-label">Sources</div>
         <ol class="sources-list">
-          ${sources.map(url => `<li><span>${escapeHtml(url)}</span></li>`).join('')}
+          ${sources
+            .map(
+              (url, i) =>
+                `<li id="source-${i + 1}"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a></li>`
+            )
+            .join('')}
         </ol>
        </div>`
     : ''
@@ -67,7 +93,6 @@ html, body {
 }
 @media print {
   html, body { width: 210mm; }
-  /* Force background colours & images to print */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -77,7 +102,6 @@ html, body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  /* Avoid page breaks inside key elements */
   .tldr-box, .sources-section, table, pre, blockquote {
     page-break-inside: avoid;
     break-inside: avoid;
@@ -98,164 +122,159 @@ html, body {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: rgba(255,255,255,.55);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 .cover-question {
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 22pt;
+  font-size: 20pt;
   font-weight: 700;
-  color: #fff;
-  line-height: 1.25;
-  margin-bottom: 28px;
-  letter-spacing: -0.015em;
+  line-height: 1.3;
+  color: #ffffff;
+  margin-bottom: 24px;
 }
-.cover-chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.cover-chips {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 .chip {
-  font-family: 'Courier New', monospace;
-  font-size: 8.5pt;
-  background: rgba(255,255,255,.13);
-  border: 1px solid rgba(255,255,255,.22);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 8pt;
+  font-weight: 500;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
   color: rgba(255,255,255,.85);
-  padding: 4px 13px;
-  border-radius: 3px;
+  padding: 4px 12px;
+  border-radius: 999px;
 }
 
-/* ── Body wrapper ─────────────────────────────────────────────── */
-.pdf-body { padding: 40px 48px 52px; }
+/* ── Body ─────────────────────────────────────────────────────── */
+.pdf-body {
+  padding: 40px 48px 56px;
+}
 
 /* ── TL;DR ────────────────────────────────────────────────────── */
 .tldr-box {
-  background: #f0edff;
+  background: #f4f1fd;
+  border: 1px solid #d9d2f8;
   border-left: 4px solid #7c6af0;
-  border-radius: 3px;
+  border-radius: 6px;
   padding: 16px 20px;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 .tldr-label {
   font-family: 'Helvetica Neue', Arial, sans-serif;
   font-size: 7.5pt;
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: #7c6af0;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
-.tldr-text { font-size: 10.5pt; color: #2d2d5e; line-height: 1.65; }
+.tldr-text {
+  font-size: 10.5pt;
+  line-height: 1.65;
+  color: #2d2b4e;
+}
 
-/* ── Report headings ──────────────────────────────────────────── */
-.report-content h1 {
+/* ── Typography & Headings ────────────────────────────────────── */
+h1, h2, h3, h4 {
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 17pt; font-weight: 700; color: #0f0c29;
-  margin: 30px 0 12px;
-  padding-bottom: 7px;
-  border-bottom: 2px solid #e6e0ff;
+  color: #0f0c29;
+  margin-top: 28px;
+  margin-bottom: 12px;
+  line-height: 1.35;
 }
-.report-content h2 {
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 13pt; font-weight: 700; color: #1a1a3e;
-  margin: 24px 0 10px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #eeeaff;
+h1 { font-size: 16pt; border-bottom: 2px solid #7c6af0; padding-bottom: 6px; }
+h2 { font-size: 13.5pt; color: #302b63; border-bottom: 1px solid #e8e4f8; padding-bottom: 4px; }
+h3 { font-size: 11.5pt; }
+p { margin-bottom: 14px; text-align: justify; }
+ul, ol { margin: 0 0 16px 24px; }
+li { margin-bottom: 6px; }
+blockquote {
+  border-left: 3px solid #7c6af0;
+  margin: 18px 0;
+  padding: 8px 18px;
+  color: #4a4870;
+  background: #faf9ff;
+  font-style: italic;
 }
-.report-content h3 {
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 11.5pt; font-weight: 700; color: #2d2d5e;
-  margin: 18px 0 8px;
-}
-.report-content h4, .report-content h5, .report-content h6 {
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 10.5pt; font-weight: 600; color: #3d3d70;
-  margin: 14px 0 6px;
-}
-.report-content p { margin-bottom: 13px; }
-.report-content ul, .report-content ol { margin: 8px 0 14px 22px; }
-.report-content li { margin-bottom: 5px; }
-.report-content strong { font-weight: 700; color: #0f0c29; }
-.report-content em { font-style: italic; }
-
-/* ── Code ─────────────────────────────────────────────────────── */
-.report-content code {
+strong { color: #0f0c29; }
+code {
   font-family: 'Courier New', monospace;
   font-size: 9pt;
-  background: #f0edff;
-  color: #5a4fd0;
+  background: #f0edf9;
   padding: 2px 5px;
   border-radius: 3px;
+  color: #5a4fd0;
 }
-.report-content pre {
-  background: #f6f4ff;
-  border: 1px solid #e0d8ff;
-  border-radius: 5px;
-  padding: 14px 16px;
-  margin: 14px 0;
-  overflow-x: auto;
-}
-.report-content pre code {
-  background: none; color: #2d2d5e; padding: 0; font-size: 9pt;
-}
-
-/* ── Blockquote & HR ──────────────────────────────────────────── */
-.report-content blockquote {
-  border-left: 3px solid #7c6af0;
-  margin: 14px 0;
-  padding: 8px 16px;
-  background: #f8f6ff;
-  color: #4a4a7a;
-  font-style: italic;
-  border-radius: 0 3px 3px 0;
-}
-.report-content hr {
-  border: none; border-top: 1px solid #e6e0ff; margin: 24px 0;
+pre {
+  background: #1e1b38;
+  color: #e2dff8;
+  padding: 16px 20px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 18px 0;
+  font-size: 9pt;
+  line-height: 1.5;
 }
 
 /* ── Tables ───────────────────────────────────────────────────── */
-.report-content table {
-  width: 100%; border-collapse: collapse;
-  margin: 18px 0; font-size: 9.5pt;
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+  font-size: 9.5pt;
 }
-.report-content th {
-  background: #7c6af0;
+th {
+  background: #302b63;
   color: #fff;
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 700; font-size: 8.5pt;
-  letter-spacing: 0.03em;
-  padding: 9px 12px; text-align: left;
+  font-weight: 600;
+  text-align: left;
+  padding: 9px 12px;
 }
-.report-content td {
+td {
   padding: 8px 12px;
-  border-bottom: 1px solid #e8e4ff;
-  vertical-align: top;
+  border-bottom: 1px solid #e6e3f4;
+  color: #24243e;
 }
-.report-content tr:nth-child(even) td { background: #f8f6ff; }
-.report-content tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: #f9f8fe; }
 
 /* ── Sources ──────────────────────────────────────────────────── */
 .section-label {
   display: block;
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 8pt; font-weight: 800;
-  letter-spacing: 0.15em; text-transform: uppercase;
-  color: #7c6af0; margin-bottom: 12px;
+  font-size: 8pt;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #7c6af0;
+  margin-bottom: 12px;
 }
 .sources-section {
-  margin-top: 36px; padding-top: 22px;
+  margin-top: 36px;
+  padding-top: 22px;
   border-top: 2px solid #e6e0ff;
 }
-.sources-list { margin: 0 0 0 18px; }
+.sources-list {
+  margin: 0 0 0 18px;
+}
 .sources-list li {
   margin-bottom: 5px;
   font-family: 'Courier New', monospace;
-  font-size: 8pt; color: #5a4fd0;
+  font-size: 8pt;
+  color: #5a4fd0;
   word-break: break-all;
 }
-
-/* ── Footer ───────────────────────────────────────────────────── */
 .pdf-footer {
-  margin-top: 44px; padding-top: 14px;
+  margin-top: 44px;
+  padding-top: 14px;
   border-top: 1px solid #eeeaff;
   text-align: center;
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 7.5pt; color: #b0aed0;
+  font-size: 7.5pt;
+  color: #b0aed0;
 }
 </style>
 </head>
@@ -266,16 +285,14 @@ html, body {
   <div class="cover-question">${escapeHtml(question || 'Research Report')}</div>
   <div class="cover-chips">
     <span class="chip">📅 ${date}</span>
-    ${sources?.length ? `<span class="chip">🔗 ${sources.length} source${sources.length !== 1 ? 's' : ''}</span>` : ''}
+    ${sources?.length ? `<span class="chip">🔗 ${sources.length} sources</span>` : ''}
     <span class="chip">⚡ Powered by LangGraph</span>
   </div>
 </div>
 
 <div class="pdf-body">
   ${summaryHtml}
-  <div class="report-content">
-    ${reportHtml}
-  </div>
+  <div class="report-content">${reportHtml}</div>
   ${sourcesHtml}
   <div class="pdf-footer">
     Generated by Research Assistant &nbsp;·&nbsp; research.mychatbot.codes &nbsp;·&nbsp; ${date}
@@ -287,13 +304,44 @@ html, body {
 }
 
 export default function ReportPanel({ report, question, runId }) {
-  const [copied,    setCopied]    = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [copiedUrlIdx, setCopiedUrlIdx] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [showShare, setShowShare] = useState(false)
 
   const normalizedReport = useMemo(() => {
     return normalizeMarkdown(report?.final_report || '')
   }, [report?.final_report])
+
+  // Preprocess markdown text to convert [1], [2] into rich citation badges
+  const linkedReport = useMemo(() => {
+    return linkifyCitations(normalizedReport, report?.sources || [])
+  }, [normalizedReport, report?.sources])
+
+  // Count how many times each source is cited
+  const citationCounts = useMemo(() => {
+    return countCitationFrequencies(report?.final_report || '')
+  }, [report?.final_report])
+
+  // Markdown custom component mapping for citations
+  const markdownComponents = useMemo(
+    () => ({
+      a: ({ href, children, ...props }) => {
+        if (typeof children === 'string' && children.startsWith('cite:')) {
+          const parts = children.split(':')
+          const num = parseInt(parts[1], 10)
+          const url = decodeURIComponent(parts.slice(2).join(':') || '')
+          return <CitationBadge num={num} url={url} sourcePrefix="source" />
+        }
+        return (
+          <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+            {children}
+          </a>
+        )
+      },
+    }),
+    []
+  )
 
   // ── Copy ──────────────────────────────────────────────────────
   const handleCopy = useCallback(() => {
@@ -303,13 +351,20 @@ export default function ReportPanel({ report, question, runId }) {
     })
   }, [report.final_report])
 
+  const handleCopySourceUrl = useCallback((url, index) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedUrlIdx(index)
+      setTimeout(() => setCopiedUrlIdx(null), 1500)
+    })
+  }, [])
+
   // ── Download .md ──────────────────────────────────────────────
   const handleDownload = useCallback(() => {
     const content = [
       '# Research Report\n',
       report.summary ? `## Executive Summary\n${report.summary}\n` : '',
       report.final_report || '',
-      (report.sources?.length)
+      report.sources?.length
         ? `\n## Sources\n${report.sources.map((s, i) => `[${i + 1}] ${s}`).join('\n')}`
         : '',
     ].join('\n')
@@ -332,11 +387,11 @@ export default function ReportPanel({ report, question, runId }) {
       const { marked } = await import('marked')
 
       const html = buildPDFDocument({
-        question:    question || '',
-        summary:     report.summary,
+        question: question || '',
+        summary: report.summary,
         finalReport: normalizedReport,
-        sources:     report.sources || [],
-        markedFn:    marked,
+        sources: report.sources || [],
+        markedFn: marked,
       })
 
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
@@ -349,7 +404,7 @@ export default function ReportPanel({ report, question, runId }) {
       document.body.appendChild(iframe)
 
       await new Promise((resolve, reject) => {
-        iframe.onload  = () => setTimeout(resolve, 700)
+        iframe.onload = () => setTimeout(resolve, 700)
         iframe.onerror = reject
         iframe.src = blobUrl
       })
@@ -360,16 +415,15 @@ export default function ReportPanel({ report, question, runId }) {
       const cleanup = () => {
         try { if (iframe) document.body.removeChild(iframe) } catch (_) {}
         try { if (blobUrl) URL.revokeObjectURL(blobUrl) } catch (_) {}
-        iframe  = null
+        iframe = null
         blobUrl = null
       }
       try { iframe.contentWindow.addEventListener('afterprint', cleanup) } catch (_) {}
       setTimeout(cleanup, 60_000)
-
     } catch (err) {
       console.error('PDF export failed:', err)
       try { if (iframe) document.body.removeChild(iframe) } catch (_) {}
-      try { if (blobUrl) URL.revokeObjectURL(blobUrl) }   catch (_) {}
+      try { if (blobUrl) URL.revokeObjectURL(blobUrl) } catch (_) {}
       alert('PDF export failed. Please use "Download .md" instead.')
     } finally {
       setExporting(false)
@@ -402,9 +456,13 @@ export default function ReportPanel({ report, question, runId }) {
             disabled={exporting}
             title="Export as PDF — opens print dialog"
           >
-            {exporting
-              ? <><span className="pdf-spinner" />Generating…</>
-              : <>📄 Export PDF</>}
+            {exporting ? (
+              <>
+                <span className="pdf-spinner" />Generating…
+              </>
+            ) : (
+              <>📄 Export PDF</>
+            )}
           </button>
 
           <button className="copy-btn" onClick={handleDownload} title="Download as Markdown">
@@ -425,20 +483,83 @@ export default function ReportPanel({ report, question, runId }) {
       )}
 
       <div className="report-body" id="reportBody">
-        <Markdown remarkPlugins={[remarkGfm]}>{normalizedReport}</Markdown>
+        <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {linkedReport}
+        </Markdown>
       </div>
 
       {report.sources?.length > 0 && (
-        <div className="sources-section">
-          <span className="eyebrow">Sources</span>
-          <ul className="sources-list">
-            {report.sources.map((url, i) => (
-              <li key={i}>
-                <a href={url} target="_blank" rel="noopener noreferrer">
-                  [{i + 1}] {url}
-                </a>
-              </li>
-            ))}
+        <div className="sources-section" id="sourcesSection">
+          <div className="sources-header-row">
+            <span className="eyebrow">Verified Sources ({report.sources.length})</span>
+          </div>
+
+          <ul className="sources-list-enhanced">
+            {report.sources.map((url, i) => {
+              const num = i + 1
+              const domain = extractDomain(url)
+              const favicon = getFaviconUrl(url)
+              const citeCount = citationCounts[num] || 0
+
+              return (
+                <li key={i} id={`source-${num}`} className="source-card-item">
+                  <div className="source-card-header">
+                    <span className="source-card-index">[{num}]</span>
+                    {favicon && (
+                      <img
+                        src={favicon}
+                        alt=""
+                        className="source-card-favicon"
+                        width={16}
+                        height={16}
+                        onError={(e) => { e.currentTarget.style.display = 'none' }}
+                      />
+                    )}
+                    <span className="source-card-domain">{domain}</span>
+
+                    {citeCount > 0 && (
+                      <span className="source-cite-chip" title={`Cited ${citeCount} times in this report`}>
+                        Cited {citeCount}x
+                      </span>
+                    )}
+
+                    <div className="source-card-actions">
+                      <button
+                        type="button"
+                        className="source-action-icon-btn"
+                        onClick={() => handleCopySourceUrl(url, i)}
+                        title="Copy source URL"
+                      >
+                        {copiedUrlIdx === i ? '✓ Copied' : '📋 Copy'}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="source-action-icon-btn"
+                        onClick={() => {
+                          const body = document.getElementById('reportBody')
+                          if (body) body.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }}
+                        title="Jump back to report text"
+                      >
+                        ↩ Back
+                      </button>
+                    </div>
+                  </div>
+
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="source-card-url"
+                    title={url}
+                  >
+                    <span>{url}</span>
+                    <span className="source-external-arrow">↗</span>
+                  </a>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { linkifyCitations, CitationBadge } from '../utils/citations'
 
 /**
  * LiveDraftPreview — displays real-time token streaming as the LLM synthesizes findings.
- * Includes live markdown rendering, blinking typewriter cursor, smart auto-scrolling,
- * and live word counter.
+ * Includes live markdown rendering, citation badges, blinking typewriter cursor,
+ * smart auto-scrolling, and live word counter.
  */
 export default function LiveDraftPreview({ text, node, loop = 0 }) {
   const bottomRef = useRef(null)
@@ -17,6 +18,30 @@ export default function LiveDraftPreview({ text, node, loop = 0 }) {
     if (!text) return 0
     return text.trim().split(/\s+/).filter(Boolean).length
   }, [text])
+
+  const formattedText = useMemo(() => {
+    return linkifyCitations(text || '')
+  }, [text])
+
+  // Custom markdown components for citation links
+  const markdownComponents = useMemo(
+    () => ({
+      a: ({ href, children, ...props }) => {
+        if (typeof children === 'string' && children.startsWith('cite:')) {
+          const parts = children.split(':')
+          const num = parseInt(parts[1], 10)
+          const url = decodeURIComponent(parts.slice(2).join(':') || '')
+          return <CitationBadge num={num} url={url} sourcePrefix="source" />
+        }
+        return (
+          <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+            {children}
+          </a>
+        )
+      },
+    }),
+    []
+  )
 
   // Smart auto-scroll: follow the stream unless the user scrolled up to read earlier text
   useEffect(() => {
@@ -62,7 +87,9 @@ export default function LiveDraftPreview({ text, node, loop = 0 }) {
       </div>
 
       <div className="live-draft-body">
-        <Markdown remarkPlugins={[remarkGfm]}>{text}</Markdown>
+        <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {formattedText}
+        </Markdown>
         <span className="streaming-cursor" aria-hidden="true">
           ▌
         </span>

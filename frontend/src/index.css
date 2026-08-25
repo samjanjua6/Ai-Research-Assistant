@@ -1182,8 +1182,296 @@ ul { list-style: none; padding: 0; margin: 0; }
   border-top: 1px solid var(--border);
   margin: 24px 0;
 }
-.sources-section { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
-.sources-section .eyebrow { margin-bottom: 12px; display: block; }
+/* ── Inline Citation Badges & Tooltips ───────────────────────────── */
+.citation-wrapper {
+  position: relative;
+  display: inline-block;
+  vertical-align: baseline;
+  line-height: 1;
+  margin: 0 1.5px;
+}
+.citation-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--violet);
+  background: var(--violet-soft);
+  border: 1px solid rgba(124, 106, 240, 0.4);
+  border-radius: 999px;
+  vertical-align: super;
+  line-height: 1;
+  cursor: pointer;
+  outline: none;
+  transition: all .15s ease;
+  user-select: none;
+}
+.citation-badge:hover, .citation-badge:focus-visible {
+  background: var(--violet);
+  color: #ffffff;
+  border-color: var(--violet);
+  transform: translateY(-1px) scale(1.08);
+  box-shadow: 0 2px 6px rgba(124, 106, 240, 0.35);
+}
+.citation-num {
+  font-size: 9.5px;
+  line-height: 1;
+}
+
+/* ── Hover Tooltip Card ─────────────────────────────────────────── */
+.citation-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 400;
+  width: 280px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  pointer-events: auto;
+}
+.citation-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--panel) transparent transparent transparent;
+}
+.citation-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.citation-favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.citation-domain {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.citation-tag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--violet);
+  background: var(--violet-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.citation-url {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.citation-url-empty {
+  font-style: italic;
+  color: var(--text-faint);
+}
+.citation-tooltip-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.citation-action-btn {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all .15s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.citation-action-btn:hover {
+  color: var(--text);
+  border-color: var(--border-hover);
+  background: var(--panel);
+}
+.citation-open-btn {
+  color: var(--violet);
+  background: var(--violet-soft);
+  border-color: rgba(124, 106, 240, 0.3);
+}
+.citation-open-btn:hover {
+  background: var(--violet);
+  color: #ffffff;
+  border-color: var(--violet);
+}
+
+/* ── Enhanced Sources List ──────────────────────────────────────── */
+.sources-section {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.sources-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.sources-list-enhanced {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.source-card-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: all .2s ease;
+}
+.source-card-item:hover {
+  border-color: var(--violet);
+  background: var(--panel);
+}
+.source-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.source-card-index {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--violet);
+}
+.source-card-favicon {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.source-card-domain {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.source-cite-chip {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--teal);
+  background: var(--teal-soft);
+  border: 1px solid rgba(51, 214, 166, 0.3);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+.source-card-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.source-action-icon-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.source-action-icon-btn:hover {
+  color: var(--text);
+  background: var(--panel);
+  border-color: var(--violet);
+}
+.source-card-url {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--violet);
+  text-decoration: none;
+  word-break: break-all;
+  line-height: 1.45;
+  transition: color .15s ease;
+}
+.source-card-url:hover {
+  color: var(--violet-hover);
+  text-decoration: underline;
+}
+.source-external-arrow {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+/* ── Source Pulse Highlight Animation ───────────────────────────── */
+@keyframes sourcePulseRing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(124, 106, 240, 0.7);
+    border-color: var(--violet);
+    background: var(--violet-soft);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(124, 106, 240, 0.2);
+    border-color: var(--violet);
+    background: var(--violet-soft);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(124, 106, 240, 0);
+  }
+}
+.source-highlight-pulse {
+  animation: sourcePulseRing 1.8s ease-out;
+  border-color: var(--violet) !important;
+  background: var(--violet-soft) !important;
+}
+
+/* Legacy sources list fallback */
 .sources-list { display: flex; flex-direction: column; gap: 6px; }
 .sources-list a { font-size: 13px; color: var(--violet); text-decoration: none; word-break: break-all; }
 .sources-list a:hover { text-decoration: underline; color: var(--violet-hover); }

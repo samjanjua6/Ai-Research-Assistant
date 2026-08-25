@@ -1,8 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { fetchPublicReport } from '../api/client'
 import { ThemeToggle } from './ThemeToggle'
+import { fetchPublicReport } from '../api/client'
+import {
+  linkifyCitations,
+  countCitationFrequencies,
+  extractDomain,
+  getFaviconUrl,
+  CitationBadge,
+} from '../utils/citations'
 
 function normalizeMarkdown(text) {
   if (!text) return ''
@@ -22,9 +29,23 @@ function escapeHtml(str) {
 }
 
 function buildPDFDocument({ question, summary, finalReport, sources, markedFn }) {
-  const reportHtml = markedFn(finalReport || '')
+  let linkedReport = finalReport || ''
+  if (sources?.length) {
+    linkedReport = linkedReport.replace(/\[(\d+)\]/g, (m, num) => {
+      const idx = parseInt(num, 10) - 1
+      const url = sources[idx]
+      if (url) {
+        return `[<sup>[${num}]</sup>](${url})`
+      }
+      return `<sup>[${num}]</sup>`
+    })
+  }
+
+  const reportHtml = markedFn(linkedReport)
   const date = new Date().toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   })
 
   const summaryHtml = summary
@@ -35,10 +56,15 @@ function buildPDFDocument({ question, summary, finalReport, sources, markedFn })
     : ''
 
   const sourcesHtml = sources?.length
-    ? `<div class="sources-section">
+    ? `<div class="sources-section" id="sources">
         <div class="section-label">Sources</div>
         <ol class="sources-list">
-          ${sources.map(url => `<li><span>${escapeHtml(url)}</span></li>`).join('')}
+          ${sources
+            .map(
+              (url, i) =>
+                `<li id="public-source-${i + 1}"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a></li>`
+            )
+            .join('')}
         </ol>
        </div>`
     : ''
@@ -53,70 +79,82 @@ function buildPDFDocument({ question, summary, finalReport, sources, markedFn })
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 11pt; line-height: 1.75; color: #1a1a2e; background: #fff;
+  font-size: 11pt;
+  line-height: 1.75;
+  color: #1a1a2e;
+  background: #fff;
 }
 @page { size: A4; margin: 0; }
 @media print {
   html, body { width: 210mm; }
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   .pdf-cover { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .tldr-box, .sources-section, table, pre, blockquote { page-break-inside: avoid; break-inside: avoid; }
   h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
 }
 .pdf-cover {
   background: linear-gradient(135deg, #0f0c29 0%, #302b63 55%, #24243e 100%);
-  color: #fff; padding: 52px 48px 44px;
+  color: #fff;
+  padding: 52px 48px 44px;
 }
 .cover-app {
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 9.5pt; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
-  color: rgba(255,255,255,.55); margin-bottom: 20px;
+  font-size: 9.5pt;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.55);
+  margin-bottom: 16px;
 }
 .cover-question {
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 22pt; font-weight: 700; color: #fff; line-height: 1.25; margin-bottom: 28px;
+  font-size: 20pt;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #ffffff;
+  margin-bottom: 24px;
 }
 .cover-chips { display: flex; gap: 10px; flex-wrap: wrap; }
 .chip {
-  font-family: 'Courier New', monospace; font-size: 8.5pt;
-  background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.22);
-  color: rgba(255,255,255,.85); padding: 4px 13px; border-radius: 3px;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 8pt;
+  font-weight: 500;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
+  color: rgba(255,255,255,.85);
+  padding: 4px 12px;
+  border-radius: 999px;
 }
-.pdf-body { padding: 40px 48px 52px; }
+.pdf-body { padding: 40px 48px 56px; }
 .tldr-box {
-  background: #f0edff; border-left: 4px solid #7c6af0; border-radius: 3px;
-  padding: 16px 20px; margin-bottom: 30px;
+  background: #f4f1fd;
+  border: 1px solid #d9d2f8;
+  border-left: 4px solid #7c6af0;
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin-bottom: 32px;
 }
 .tldr-label {
-  font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 7.5pt; font-weight: 800;
-  letter-spacing: 0.16em; text-transform: uppercase; color: #7c6af0; margin-bottom: 8px;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 7.5pt;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #7c6af0;
+  margin-bottom: 6px;
 }
-.tldr-text { font-size: 10.5pt; color: #2d2d5e; line-height: 1.65; }
-.report-content h1 {
-  font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17pt; font-weight: 700; color: #0f0c29;
-  margin: 30px 0 12px; padding-bottom: 7px; border-bottom: 2px solid #e6e0ff;
-}
-.report-content h2 {
-  font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13pt; font-weight: 700; color: #1a1a3e;
-  margin: 24px 0 10px; padding-bottom: 4px; border-bottom: 1px solid #eeeaff;
-}
-.report-content h3 {
-  font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11.5pt; font-weight: 700; color: #2d2d5e; margin: 18px 0 8px;
-}
-.report-content p { margin-bottom: 13px; }
-.report-content ul, .report-content ol { margin: 8px 0 14px 22px; }
-.report-content li { margin-bottom: 5px; }
-.report-content strong { font-weight: 700; color: #0f0c29; }
-.report-content code { font-family: 'Courier New', monospace; font-size: 9pt; background: #f0edff; color: #5a4fd0; padding: 2px 5px; border-radius: 3px; }
-.report-content pre { background: #f6f4ff; border: 1px solid #e0d8ff; border-radius: 5px; padding: 14px 16px; margin: 14px 0; overflow-x: auto; }
-.report-content pre code { background: none; color: #2d2d5e; padding: 0; font-size: 9pt; }
-.report-content blockquote { border-left: 3px solid #7c6af0; margin: 14px 0; padding: 8px 16px; background: #f8f6ff; color: #4a4a7a; font-style: italic; border-radius: 0 3px 3px 0; }
-.report-content hr { border: none; border-top: 1px solid #e6e0ff; margin: 24px 0; }
-.report-content table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 9.5pt; }
-.report-content th { background: #7c6af0; color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 700; font-size: 8.5pt; padding: 9px 12px; text-align: left; }
-.report-content td { padding: 8px 12px; border-bottom: 1px solid #e8e4ff; vertical-align: top; }
-.report-content tr:nth-child(even) td { background: #f8f6ff; }
-.report-content tr:last-child td { border-bottom: none; }
+.tldr-text { font-size: 10.5pt; line-height: 1.65; color: #2d2b4e; }
+h1, h2, h3, h4 { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0f0c29; margin-top: 28px; margin-bottom: 12px; line-height: 1.35; }
+h1 { font-size: 16pt; border-bottom: 2px solid #7c6af0; padding-bottom: 6px; }
+h2 { font-size: 13.5pt; color: #302b63; border-bottom: 1px solid #e8e4f8; padding-bottom: 4px; }
+p { margin-bottom: 14px; text-align: justify; }
+ul, ol { margin: 0 0 16px 24px; }
+li { margin-bottom: 6px; }
+blockquote { border-left: 3px solid #7c6af0; margin: 18px 0; padding: 8px 18px; color: #4a4870; background: #faf9ff; font-style: italic; }
+table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 9.5pt; }
+th { background: #302b63; color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 600; text-align: left; padding: 9px 12px; }
+td { padding: 8px 12px; border-bottom: 1px solid #e6e3f4; color: #24243e; }
+tr:nth-child(even) td { background: #f9f8fe; }
 .section-label { display: block; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: #7c6af0; margin-bottom: 12px; }
 .sources-section { margin-top: 36px; padding-top: 22px; border-top: 2px solid #e6e0ff; }
 .sources-list { margin: 0 0 0 18px; }
@@ -150,6 +188,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
   const [report, setReport] = useState(null)
   const [copied, setCopied] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [copiedUrlIdx, setCopiedUrlIdx] = useState(null)
   const [exporting, setExporting] = useState(false)
 
   // Fetch report by share token
@@ -176,6 +215,36 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
     return normalizeMarkdown(report?.final_report || '')
   }, [report?.final_report])
 
+  // Preprocess markdown text to convert [1], [2] into rich citation badges
+  const linkedReport = useMemo(() => {
+    return linkifyCitations(normalizedReport, report?.sources || [])
+  }, [normalizedReport, report?.sources])
+
+  // Count citation occurrences
+  const citationCounts = useMemo(() => {
+    return countCitationFrequencies(report?.final_report || '')
+  }, [report?.final_report])
+
+  // Markdown custom components mapping for citations
+  const markdownComponents = useMemo(
+    () => ({
+      a: ({ href, children, ...props }) => {
+        if (typeof children === 'string' && children.startsWith('cite:')) {
+          const parts = children.split(':')
+          const num = parseInt(parts[1], 10)
+          const url = decodeURIComponent(parts.slice(2).join(':') || '')
+          return <CitationBadge num={num} url={url} sourcePrefix="public-source" />
+        }
+        return (
+          <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+            {children}
+          </a>
+        )
+      },
+    }),
+    []
+  )
+
   // ── Copy Markdown Handler ──────────────────────────────────────
   const handleCopyMarkdown = useCallback(() => {
     if (!report?.final_report) return
@@ -190,6 +259,13 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
     navigator.clipboard.writeText(window.location.href).then(() => {
       setCopiedLink(true)
       setTimeout(() => setCopiedLink(false), 2000)
+    })
+  }, [])
+
+  const handleCopySourceUrl = useCallback((url, index) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedUrlIdx(index)
+      setTimeout(() => setCopiedUrlIdx(null), 1500)
     })
   }, [])
 
@@ -247,9 +323,11 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
 
   const formattedDate = report?.created_at
     ? new Date(report.created_at).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
       })
-    : ''
+    : null
 
   return (
     <>
@@ -307,9 +385,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
               <h1 className="public-report-title">{report.question}</h1>
 
               <div className="meta-row" style={{ marginTop: '12px' }}>
-                <span className="status-pill status-pill-done">
-                  ✓ Completed
-                </span>
+                <span className="status-pill status-pill-done">✓ Completed</span>
                 {report.author_name && (
                   <span className="stat">
                     Researched by <b>{report.author_name}</b>
@@ -339,7 +415,13 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                   onClick={handleExportPDF}
                   disabled={exporting}
                 >
-                  {exporting ? <><span className="pdf-spinner" /> Generating…</> : <>📄 Export PDF</>}
+                  {exporting ? (
+                    <>
+                      <span className="pdf-spinner" /> Generating…
+                    </>
+                  ) : (
+                    <>📄 Export PDF</>
+                  )}
                 </button>
                 <button className="copy-btn" onClick={handleCopyMarkdown}>
                   {copied ? '✓ Copied!' : '📋 Copy Markdown'}
@@ -368,23 +450,83 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
             )}
 
             {/* Main Report Body */}
-            <div className="card report-panel-card" style={{ marginTop: '20px' }}>
-              <div className="report-body">
-                <Markdown remarkPlugins={[remarkGfm]}>{normalizedReport}</Markdown>
+            <div className="card report-panel-card" style={{ marginTop: '20px' }} id="publicReportCard">
+              <div className="report-body" id="publicReportContent">
+                <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                  {linkedReport}
+                </Markdown>
               </div>
 
               {/* Sources */}
               {report.sources?.length > 0 && (
-                <div className="sources-section">
-                  <span className="eyebrow">Verified Web Sources</span>
-                  <ul className="sources-list">
-                    {report.sources.map((url, i) => (
-                      <li key={i}>
-                        <a href={url} target="_blank" rel="noopener noreferrer">
-                          [{i + 1}] {url}
-                        </a>
-                      </li>
-                    ))}
+                <div className="sources-section" id="publicSourcesSection">
+                  <span className="eyebrow">Verified Web Sources ({report.sources.length})</span>
+                  <ul className="sources-list-enhanced">
+                    {report.sources.map((url, i) => {
+                      const num = i + 1
+                      const domain = extractDomain(url)
+                      const favicon = getFaviconUrl(url)
+                      const citeCount = citationCounts[num] || 0
+
+                      return (
+                        <li key={i} id={`public-source-${num}`} className="source-card-item">
+                          <div className="source-card-header">
+                            <span className="source-card-index">[{num}]</span>
+                            {favicon && (
+                              <img
+                                src={favicon}
+                                alt=""
+                                className="source-card-favicon"
+                                width={16}
+                                height={16}
+                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                              />
+                            )}
+                            <span className="source-card-domain">{domain}</span>
+
+                            {citeCount > 0 && (
+                              <span className="source-cite-chip" title={`Cited ${citeCount} times in this report`}>
+                                Cited {citeCount}x
+                              </span>
+                            )}
+
+                            <div className="source-card-actions">
+                              <button
+                                type="button"
+                                className="source-action-icon-btn"
+                                onClick={() => handleCopySourceUrl(url, i)}
+                                title="Copy source URL"
+                              >
+                                {copiedUrlIdx === i ? '✓ Copied' : '📋 Copy'}
+                              </button>
+
+                              <button
+                                type="button"
+                                className="source-action-icon-btn"
+                                onClick={() => {
+                                  const content = document.getElementById('publicReportContent')
+                                  if (content) content.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                                }}
+                                title="Jump back to report text"
+                              >
+                                ↩ Back
+                              </button>
+                            </div>
+                          </div>
+
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="source-card-url"
+                            title={url}
+                          >
+                            <span>{url}</span>
+                            <span className="source-external-arrow">↗</span>
+                          </a>
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
               )}
@@ -393,7 +535,9 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
             {/* Bottom Callout Banner */}
             <div className="public-cta-banner card" style={{ marginTop: '24px' }}>
               <div className="public-cta-content">
-                <span className="topbar-mark" style={{ width: '36px', height: '36px', fontSize: '18px' }}>🔬</span>
+                <span className="topbar-mark" style={{ width: '36px', height: '36px', fontSize: '18px' }}>
+                  🔬
+                </span>
                 <div>
                   <h4 style={{ fontSize: '15px', fontWeight: 600 }}>Explore any topic with AI Research Assistant</h4>
                   <p style={{ fontSize: '13px', color: 'var(--text-dim)', marginTop: '2px' }}>
