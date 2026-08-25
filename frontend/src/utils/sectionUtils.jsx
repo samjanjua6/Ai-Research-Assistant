@@ -14,6 +14,43 @@ export function slugifyHeading(text) {
 }
 
 /**
+ * Normalizes and fixes markdown tables in text:
+ * 1. Strips dangling solitary pipe lines (e.g. `\n|\n` or `\n|`)
+ * 2. Un-glues single-line double-pipe table rows
+ * 3. Auto-inserts missing header delimiter `| --- | --- |` if omitted
+ * 4. Ensures table has blank line before it
+ */
+export function normalizeMarkdownTables(text) {
+  if (!text) return ''
+  let cleaned = text
+
+  // 1. Remove dangling solitary pipe lines at end or between lines
+  cleaned = cleaned.replace(/\n\|[ \t]*(?=\n|$)/g, '')
+
+  // 2. Un-glue single-line double-pipe rows
+  cleaned = cleaned.replace(/\|[ \t]*\|(?=[:\-])/g, '|\n|')
+  cleaned = cleaned.replace(/\|[ \t]*\|(?=[^\n|:\-])/g, '|\n|')
+
+  // 3. Ensure table start has a blank line before it if preceded by text
+  cleaned = cleaned.replace(/([^\n])\n(\|[^\n]+\|)/g, '$1\n\n$2')
+
+  // 4. Auto-insert missing header delimiter row if omitted
+  cleaned = cleaned.replace(
+    /(^|\n\n)(\|[^\n|]+(?:\|[^\n|]+)+\|)\n(?!\s*\|[\s\-:|]+\|)(\|[^\n|]+(?:\|[^\n|]+)+\|)/g,
+    (match, prefix, headerRow, firstDataRow) => {
+      const colCount = headerRow.split('|').length - 2
+      if (colCount > 0) {
+        const delimiter = '|' + Array(colCount).fill(' --- ').join('|') + '|'
+        return `${prefix}${headerRow}\n${delimiter}\n${firstDataRow}`
+      }
+      return match
+    }
+  )
+
+  return cleaned
+}
+
+/**
  * Extracts raw text from React node children.
  */
 export function getNodeText(node) {
@@ -30,10 +67,11 @@ export function getNodeText(node) {
  * Slices section markdown from a heading until the next heading of equal or higher depth.
  */
 export function extractSectionMarkdown(headingText, fullMarkdown, level = 2) {
-  if (!fullMarkdown || !headingText) return fullMarkdown || ''
+  if (!fullMarkdown || !headingText) return normalizeMarkdownTables(fullMarkdown || '')
 
+  const normalized = normalizeMarkdownTables(fullMarkdown)
   const cleanHeading = headingText.replace(/[#*`_]/g, '').trim()
-  const lines = fullMarkdown.split('\n')
+  const lines = normalized.split('\n')
 
   let startIndex = -1
 
@@ -52,7 +90,7 @@ export function extractSectionMarkdown(headingText, fullMarkdown, level = 2) {
   }
 
   if (startIndex === -1) {
-    return fullMarkdown
+    return normalized
   }
 
   let endIndex = lines.length
@@ -67,7 +105,7 @@ export function extractSectionMarkdown(headingText, fullMarkdown, level = 2) {
     }
   }
 
-  return lines.slice(startIndex, endIndex).join('\n').trim()
+  return normalizeMarkdownTables(lines.slice(startIndex, endIndex).join('\n').trim())
 }
 
 /**
@@ -187,7 +225,7 @@ function extractCleanCellText(cellElement) {
   // Format citation badges cleanly as [N]
   clone.querySelectorAll('.citation-badge').forEach((badge) => {
     const num = badge.querySelector('.citation-num')?.innerText || badge.innerText || ''
-    const textNode = document.createTextNode(`[${num.trim()}]`)
+    const textNode = document.createTextNode(num.trim().startsWith('[') ? num.trim() : `[${num.trim()}]`)
     badge.replaceWith(textNode)
   })
 
@@ -212,13 +250,17 @@ function convertTableElementToMarkdown(tableEl) {
     const cellElements = Array.from(tr.querySelectorAll('th, td'))
     if (!cellElements.length) return
 
-    const rowText = `| ${cellElements.map(extractCleanCellText).join(' | ')} |`
+    const cellsText = cellElements.map(extractCleanCellText)
+    // Filter out rows that have no real content or are stray pipes
+    if (cellsText.length === 0 || cellsText.every((c) => !c)) return
+
+    const rowText = `| ${cellsText.join(' | ')} |`
     rows.push(rowText)
 
     // Append markdown delimiter separator row under the table header row
     const isHeaderRow = tr.querySelector('th') !== null || index === 0
     if (isHeaderRow && index === 0) {
-      const separator = `| ${cellElements.map(() => '---').join(' | ')} |`
+      const separator = `| ${cellsText.map(() => '---').join(' | ')} |`
       rows.push(separator)
     }
   })

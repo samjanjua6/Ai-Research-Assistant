@@ -16,12 +16,7 @@ import {
 } from '../utils/sectionUtils'
 
 function normalizeMarkdown(text) {
-  if (!text) return ''
-  let cleaned = text
-  cleaned = cleaned.replace(/\|[ \t]*\|(?=[:\-])/g, '|\n|')
-  cleaned = cleaned.replace(/\|[ \t]*\|(?=[^\n|:\-])/g, '|\n|')
-  cleaned = cleaned.replace(/([^\n])\n(\|[^\n]+\|\r?\n\|[-: |]+\|)/g, '$1\n\n$2')
-  return cleaned
+  return normalizeMarkdownTables(text || '')
 }
 
 function escapeHtml(str) {
