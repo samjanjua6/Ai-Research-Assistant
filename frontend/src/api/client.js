@@ -140,10 +140,10 @@ export async function fetchPublicReport(shareToken) {
  * Returns a cleanup function — call it to close the stream.
  *
  * @param {string} runId
- * @param {{ onStep: Function, onDone: Function, onError: Function }} handlers
+ * @param {{ onStep: Function, onToken?: Function, onDone: Function, onError: Function }} handlers
  * @returns {() => void} cleanup
  */
-export function openStream(runId, { onStep, onDone, onError }) {
+export function openStream(runId, { onStep, onToken, onDone, onError }) {
   const token = getToken()
   const url = token
     ? `${BASE}/research/${runId}/stream?token=${encodeURIComponent(token)}`
@@ -153,6 +153,10 @@ export function openStream(runId, { onStep, onDone, onError }) {
 
   es.addEventListener('step', (e) => {
     try { onStep(JSON.parse(e.data)) } catch (_) {}
+  })
+
+  es.addEventListener('token', (e) => {
+    try { onToken?.(JSON.parse(e.data)) } catch (_) {}
   })
 
   es.addEventListener('done', (e) => {

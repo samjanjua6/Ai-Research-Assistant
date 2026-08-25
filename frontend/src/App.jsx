@@ -11,6 +11,7 @@ import ProgressTimeline from './components/ProgressTimeline'
 import ReportPanel      from './components/ReportPanel'
 import Placeholder      from './components/Placeholder'
 import PublicReportView from './components/PublicReportView'
+import LiveDraftPreview from './components/LiveDraftPreview'
 
 function getShareTokenFromPath() {
   if (typeof window === 'undefined') return null
@@ -20,7 +21,20 @@ function getShareTokenFromPath() {
 
 export default function App() {
   const { user, loading: authLoading } = useAuth()
-  const { phase, steps, report, history, error, submit, stop, viewRun, activeRunId: hookActiveRunId } = useResearch(user)
+  const {
+    phase,
+    steps,
+    report,
+    streamingText,
+    streamingNode,
+    streamingLoop,
+    history,
+    error,
+    submit,
+    stop,
+    viewRun,
+    activeRunId: hookActiveRunId,
+  } = useResearch(user)
 
   const [shareToken,     setShareToken]     = useState(getShareTokenFromPath)
   const [activeRunId,    setActiveRunId]    = useState(null)
@@ -184,6 +198,15 @@ export default function App() {
 
           {/* Live progress timeline */}
           <ProgressTimeline steps={steps} phase={phase} />
+
+          {/* Real-time streaming draft display */}
+          {phase === 'streaming' && streamingText && (
+            <LiveDraftPreview
+              text={streamingText}
+              node={streamingNode}
+              loop={streamingLoop}
+            />
+          )}
 
           {/* Final report */}
           {showReport && (

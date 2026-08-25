@@ -7,7 +7,10 @@ import { startRun, listRuns, getRun, openStream, stopRun } from '../api/client'
  * Exposes:
  *   phase         — 'idle' | 'streaming' | 'done' | 'error'
  *   steps         — array of step-event payloads (live timeline)
- *   report        — { summary, final_report, sources } when done
+ *   report        — { id, summary, final_report, sources } when done
+ *   streamingText — live real-time token string as LLM drafts
+ *   streamingNode — active generating node name (e.g. 'draft_report')
+ *   streamingLoop — current loop iteration index
  *   history       — list of past runs
  *   error         — error message string or null
  *   activeRunId   — currently active/viewed run ID
@@ -20,16 +23,32 @@ import { startRun, listRuns, getRun, openStream, stopRun } from '../api/client'
  *   reloads when they log in/out.
  */
 export function useResearch(currentUser = null) {
-  const [phase,       setPhase]       = useState('idle')
-  const [steps,       setSteps]       = useState([])
-  const [report,      setReport]      = useState(null)
-  const [history,     setHistory]     = useState([])
-  const [error,       setError]       = useState(null)
-  const [activeRunId, setActiveRunId] = useState(null)
+  const [phase,         setPhase]         = useState('idle')
+  const [steps,         setSteps]         = useState([])
+  const [report,        setReport]        = useState(null)
+  const [streamingText, setStreamingText] = useState('')
+  const [streamingNode, setStreamingNode] = useState(null)
+  const [streamingLoop, setStreamingLoop] = useState(0)
+  const [history,       setHistory]       = useState([])
+  const [error,         setError]         = useState(null)
+  const [activeRunId,   setActiveRunId]   = useState(null)
 
   // Holds the SSE cleanup function so we can cancel on unmount / new run
   const cleanupRef = useRef(null)
   const activeRunIdRef = useRef(null)
+
+  // 60fps token buffer via requestAnimationFrame
+  const tokenBufferRef = useRef('')
+  const rafIdRef = useRef(null)
+
+  const flushTokenBuffer = useCallback(() => {
+    if (tokenBufferRef.current) {
+      const chunk = tokenBufferRef.current
+      tokenBufferRef.current = ''
+      setStreamingText((prev) => prev + chunk)
+    }
+    rafIdRef.current = null
+  }, [])
 
   // Close any open stream
   const closeStream = useCallback(() => {
@@ -37,6 +56,11 @@ export function useResearch(currentUser = null) {
       cleanupRef.current()
       cleanupRef.current = null
     }
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
+    tokenBufferRef.current = ''
   }, [])
 
   // Cleanup on unmount
@@ -62,6 +86,9 @@ export function useResearch(currentUser = null) {
       setHistory([])
       setSteps([])
       setReport(null)
+      setStreamingText('')
+      setStreamingNode(null)
+      setStreamingLoop(0)
       setError(null)
       setPhase('idle')
       setActiveRunId(null)
@@ -72,13 +99,34 @@ export function useResearch(currentUser = null) {
   const _startStream = useCallback((runId) => {
     setActiveRunId(runId)
     activeRunIdRef.current = runId
+    setStreamingText('')
+    setStreamingNode(null)
+    setStreamingLoop(0)
 
     cleanupRef.current = openStream(runId, {
       onStep: (data) => {
         setSteps((prev) => [...prev, data])
       },
+      onToken: (data) => {
+        if (data.node) setStreamingNode(data.node)
+        if (typeof data.loop === 'number') setStreamingLoop(data.loop)
+        if (data.token) {
+          tokenBufferRef.current += data.token
+          if (!rafIdRef.current) {
+            rafIdRef.current = requestAnimationFrame(flushTokenBuffer)
+          }
+        }
+      },
       onDone: (data) => {
         cleanupRef.current = null
+        if (rafIdRef.current) {
+          cancelAnimationFrame(rafIdRef.current)
+          rafIdRef.current = null
+        }
+        tokenBufferRef.current = ''
+        setStreamingText('')
+        setStreamingNode(null)
+
         if (data.status === 'done') {
           setReport({
             id:           runId,
@@ -99,13 +147,16 @@ export function useResearch(currentUser = null) {
         loadHistory()
       },
     })
-  }, [loadHistory])
+  }, [loadHistory, flushTokenBuffer])
 
   // ── submit ───────────────────────────────────────────────────────
   const submit = useCallback(async (question) => {
     closeStream()
     setSteps([])
     setReport(null)
+    setStreamingText('')
+    setStreamingNode(null)
+    setStreamingLoop(0)
     setError(null)
     setPhase('streaming')
 
@@ -144,6 +195,9 @@ export function useResearch(currentUser = null) {
     closeStream()
     setSteps([])
     setReport(null)
+    setStreamingText('')
+    setStreamingNode(null)
+    setStreamingLoop(0)
     setError(null)
     setActiveRunId(runId)
     activeRunIdRef.current = runId
@@ -185,6 +239,9 @@ export function useResearch(currentUser = null) {
     phase,
     steps,
     report,
+    streamingText,
+    streamingNode,
+    streamingLoop,
     history,
     error,
     activeRunId,

@@ -11,6 +11,7 @@ Endpoints:
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 import json
 import secrets
 import uuid
@@ -23,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.graph import graph
 from app.agent.state import GraphState
+from app.core.events import publish_event, subscribe, unsubscribe
 from app.db.crud import (
     create_run,
     get_run,
@@ -171,6 +173,12 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
                     else:
                         accumulated[k] = v
 
+                step_payload = {
+                    k: v
+                    for k, v in state_update.items()
+                    if k != "search_results"
+                }
+
                 # Persist a log row (skip raw search_results to avoid huge JSONB)
                 async with AsyncSessionLocal() as db:
                     await log_step(
@@ -178,12 +186,20 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
                         run_id=run_id,
                         step_name=node_name,
                         loop_index=accumulated.get("loop_count", 0),
-                        payload={
-                            k: v
-                            for k, v in state_update.items()
-                            if k != "search_results"
-                        },
+                        payload=step_payload,
                     )
+
+                # Broadcast live step event to SSE listeners with 0ms delay
+                publish_event(
+                    str(run_id),
+                    "step",
+                    {
+                        "node": node_name,
+                        "loop": accumulated.get("loop_count", 0),
+                        "payload": step_payload,
+                        "logged_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
 
     except Exception as exc:
         if cancel_event.is_set():
@@ -199,6 +215,15 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
                 payload={"error": str(exc)},
             )
             await update_run_status(db, run_id, RunStatus.failed)
+
+        publish_event(
+            str(run_id),
+            "done",
+            {
+                "status": "failed",
+                "error": str(exc),
+            },
+        )
         return
     finally:
         ACTIVE_CANCELLATIONS.pop(str(run_id), None)
@@ -206,16 +231,33 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
     if cancel_event.is_set():
         return
 
+    final_report_text = accumulated.get("final_report", "")
+    summary_text = accumulated.get("summary", "")
+    sources_list = accumulated.get("sources", [])
+    loop_count_num = accumulated.get("loop_count", 0)
+
     async with AsyncSessionLocal() as db:
         await update_run_status(
             db,
             run_id,
             RunStatus.done,
-            final_report=accumulated.get("final_report", ""),
-            summary=accumulated.get("summary", ""),
-            sources=accumulated.get("sources", []),
-            loop_count=accumulated.get("loop_count", 0),
+            final_report=final_report_text,
+            summary=summary_text,
+            sources=sources_list,
+            loop_count=loop_count_num,
         )
+
+    # Broadcast final completion event to all SSE subscribers
+    publish_event(
+        str(run_id),
+        "done",
+        {
+            "status": "done",
+            "summary": summary_text,
+            "final_report": final_report_text,
+            "sources": sources_list,
+        },
+    )
     logger.info("graph_run_complete", run_id=str(run_id))
 
 
@@ -366,26 +408,28 @@ async def stream_research_run(
         raise HTTPException(status_code=403, detail="Not authorized to stream this run")
 
     async def event_generator() -> AsyncGenerator[dict, None]:
-        seen_log_ids: set[str] = set()
-        while True:
+        queue = subscribe(str(run_id))
+        seen_step_nodes: set[str] = set()
+
+        try:
+            # 1. Replay historical step logs from DB for catch-up on connect
             async with AsyncSessionLocal() as session:
                 current_run = await get_run(session, run_id)
                 logs = await get_step_logs(session, run_id)
 
             for log in logs:
-                log_str = str(log.id)
-                if log_str not in seen_log_ids:
-                    seen_log_ids.add(log_str)
-                    yield {
-                        "event": "step",
-                        "data": json.dumps({
-                            "node": log.step_name,
-                            "loop": log.loop_index,
-                            "payload": log.payload,
-                            "logged_at": log.logged_at.isoformat(),
-                        }),
-                    }
+                seen_step_nodes.add(f"{log.step_name}_{log.loop_index}")
+                yield {
+                    "event": "step",
+                    "data": json.dumps({
+                        "node": log.step_name,
+                        "loop": log.loop_index,
+                        "payload": log.payload,
+                        "logged_at": log.logged_at.isoformat(),
+                    }),
+                }
 
+            # If the run already finished before connecting, yield done immediately
             if current_run and current_run.status in (RunStatus.done, RunStatus.failed):
                 error_msg = None
                 if current_run.status == RunStatus.failed:
@@ -406,9 +450,33 @@ async def stream_research_run(
                         "error": error_msg,
                     }),
                 }
-                break
+                return
 
-            await asyncio.sleep(1.5)
+            # 2. Stream live events from the in-memory queue with zero latency
+            while True:
+                try:
+                    msg = await asyncio.wait_for(queue.get(), timeout=20.0)
+                    yield msg
+                    if msg.get("event") == "done":
+                        break
+                except asyncio.TimeoutError:
+                    # Heartbeat & check DB status as a safety fallback
+                    async with AsyncSessionLocal() as session:
+                        check_run = await get_run(session, run_id)
+                    if check_run and check_run.status in (RunStatus.done, RunStatus.failed):
+                        yield {
+                            "event": "done",
+                            "data": json.dumps({
+                                "status": check_run.status.value,
+                                "summary": check_run.summary,
+                                "final_report": check_run.final_report,
+                                "sources": check_run.sources or [],
+                            }),
+                        }
+                        break
+                    yield {"event": "ping", "data": "{}"}
+        finally:
+            unsubscribe(str(run_id), queue)
 
     return EventSourceResponse(event_generator())
 

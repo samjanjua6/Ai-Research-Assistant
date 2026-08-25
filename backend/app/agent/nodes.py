@@ -1,7 +1,7 @@
 """
 LangGraph node functions.
 
-Every node is a plain function that receives GraphState and returns
+Every node is an async function that receives GraphState and returns
 a dict of partial state updates — LangGraph merges these into the state.
 """
 
@@ -17,6 +17,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.agent.state import GraphState, SearchResult
 from app.agent.tools import search_duckduckgo
 from app.core.config import get_settings
+from app.core.events import publish_event
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -41,24 +42,23 @@ def clean_markdown_tables(text: str) -> str:
     """
     if not text:
         return ""
-    
+
     cleaned = text
-    # 1. Un-glue double pipes between table rows (e.g. `... row 1 || ... row 2 |` or `... row 1 ||---|---|`)
+    # 1. Un-glue double pipes between table rows
     cleaned = re.sub(r'\|[ \t]*\|(?=[:\-])', '|\n|', cleaned)
     cleaned = re.sub(r'\|[ \t]*\|(?=[^\n|:\-])', '|\n|', cleaned)
-    
+
     # 2. Ensure table start has a blank line before it if preceded by text
     cleaned = re.sub(r'([^\n])\n(\|[^\n]+\|\r?\n\|[-: |]+\|)', r'\1\n\n\2', cleaned)
-    
-    return cleaned
 
+    return cleaned
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Node 1 — plan_steps
 # ─────────────────────────────────────────────────────────────────────────────
 
-def plan_steps(state: GraphState) -> dict[str, Any]:
+async def plan_steps(state: GraphState) -> dict[str, Any]:
     """
     Break the user's research question into 3-5 focused sub-questions.
     Returns a list of plain strings that will be used as search queries.
@@ -76,7 +76,7 @@ def plan_steps(state: GraphState) -> dict[str, Any]:
     )
     human = f"Research question: {state['question']}"
 
-    response = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
+    response = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
 
     raw = response.content.strip()
     # Strip markdown code fences if the model wraps them anyway
@@ -104,7 +104,7 @@ def plan_steps(state: GraphState) -> dict[str, Any]:
 # Node 2 — search_web
 # ─────────────────────────────────────────────────────────────────────────────
 
-def search_web(state: GraphState) -> dict[str, Any]:
+async def search_web(state: GraphState) -> dict[str, Any]:
     """
     Run a DuckDuckGo search for every step in state['steps'].
     New results are APPENDED to state['search_results'] (operator.add).
@@ -126,12 +126,13 @@ def search_web(state: GraphState) -> dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Node 3 — draft_report
+# Node 3 — draft_report (with real-time token streaming)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def draft_report(state: GraphState) -> dict[str, Any]:
+async def draft_report(state: GraphState) -> dict[str, Any]:
     """
-    Synthesise all collected search results into a structured draft report.
+    Synthesise all collected search results into a structured draft report,
+    streaming tokens in real-time to active SSE subscribers.
     """
     logger.info("node:draft_report", run_id=state["run_id"], results=len(state["search_results"]))
     llm = _get_llm()
@@ -162,8 +163,27 @@ def draft_report(state: GraphState) -> dict[str, Any]:
         "Write the draft report:"
     )
 
-    response = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
-    draft = clean_markdown_tables(response.content.strip())
+    chunks: list[str] = []
+    loop_idx = state.get("loop_count", 0)
+    run_id_str = str(state["run_id"])
+
+    # Stream chunks token-by-token directly to SSE clients
+    async for chunk in llm.astream([SystemMessage(content=system), HumanMessage(content=human)]):
+        token = str(chunk.content or "")
+        if token:
+            chunks.append(token)
+            publish_event(
+                run_id_str,
+                "token",
+                {
+                    "node": "draft_report",
+                    "loop": loop_idx,
+                    "token": token,
+                },
+            )
+
+    raw_draft = "".join(chunks)
+    draft = clean_markdown_tables(raw_draft.strip())
     logger.info("draft_report_done", draft_length=len(draft))
     return {"draft": draft}
 
@@ -172,7 +192,7 @@ def draft_report(state: GraphState) -> dict[str, Any]:
 # Node 4 — review_draft
 # ─────────────────────────────────────────────────────────────────────────────
 
-def review_draft(state: GraphState) -> dict[str, Any]:
+async def review_draft(state: GraphState) -> dict[str, Any]:
     """
     Self-review the draft and decide whether to loop back for more searching.
     Returns gaps_found=True if important information is still missing AND
@@ -202,7 +222,7 @@ def review_draft(state: GraphState) -> dict[str, Any]:
         "Review:"
     )
 
-    response = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
+    response = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
     raw = response.content.strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
@@ -228,7 +248,7 @@ def review_draft(state: GraphState) -> dict[str, Any]:
 # Node 5 — finalize_report
 # ─────────────────────────────────────────────────────────────────────────────
 
-def finalize_report(state: GraphState) -> dict[str, Any]:
+async def finalize_report(state: GraphState) -> dict[str, Any]:
     """
     Polish the draft into a final report with a one-paragraph summary and
     a deduplicated sources list.
@@ -252,7 +272,7 @@ def finalize_report(state: GraphState) -> dict[str, Any]:
         "Finalize:"
     )
 
-    response = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
+    response = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
     raw = response.content.strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
