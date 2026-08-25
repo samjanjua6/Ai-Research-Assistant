@@ -42,12 +42,10 @@ export function countCitationFrequencies(text) {
 /**
  * Preprocess markdown text to convert citation brackets [1], [2], [1, 2]
  * into custom markdown links that react-markdown can intercept.
- * Format: [^1^](citation:1) or custom link scheme.
  */
 export function linkifyCitations(text, sources = []) {
   if (!text) return ''
-  
-  // Replace patterns like [1], [2], [1, 2], [1, 3, 5]
+
   return text.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (match, numString) => {
     const numbers = numString
       .split(/\s*,\s*/)
@@ -68,7 +66,7 @@ export function linkifyCitations(text, sources = []) {
 
 /**
  * CitationBadge component — rendered for every [cite:N:url] link.
- * Features hover preview card with website favicon, URL copy, and smooth jump-to-source.
+ * Uses inline anchor tag for clean clipboard text selection without newline breaking.
  */
 export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
   const [showTooltip, setShowTooltip] = useState(false)
@@ -99,12 +97,17 @@ export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
       targetEl.classList.remove('source-highlight-pulse')
-      // Trigger reflow to restart animation if clicked again
       void targetEl.offsetWidth
       targetEl.classList.add('source-highlight-pulse')
       setTimeout(() => targetEl.classList.remove('source-highlight-pulse'), 2500)
     } else if (url) {
       window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      handleClick(e)
     }
   }
 
@@ -123,14 +126,17 @@ export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <button
-        type="button"
+      <a
+        href={`#${sourcePrefix}-${num}`}
         className="citation-badge"
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
         aria-label={`Jump to citation ${num}: ${domain || url || 'Source'}`}
       >
-        <span className="citation-num">{num}</span>
-      </button>
+        <span className="citation-num">[{num}]</span>
+      </a>
 
       {showTooltip && (
         <div className="citation-tooltip animate-in" role="tooltip">
