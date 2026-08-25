@@ -20,13 +20,15 @@ function getShareTokenFromPath() {
 
 export default function App() {
   const { user, loading: authLoading } = useAuth()
-  const { phase, steps, report, history, error, submit, stop, viewRun } = useResearch(user)
+  const { phase, steps, report, history, error, submit, stop, viewRun, activeRunId: hookActiveRunId } = useResearch(user)
 
   const [shareToken,     setShareToken]     = useState(getShareTokenFromPath)
   const [activeRunId,    setActiveRunId]    = useState(null)
   const [activeQuestion, setActiveQuestion] = useState(null)
   const [formQuestion,   setFormQuestion]   = useState('')
   const [showBanner,     setShowBanner]     = useState(true)
+
+  const currentRunId = activeRunId || hookActiveRunId || report?.id
 
   // Guest draft preservation — if user types before logging in
   const [pendingQuestion,  setPendingQuestion]  = useState(null)
@@ -141,7 +143,8 @@ export default function App() {
           />
           <HistoryPanel
             runs={history}
-            activeRunId={activeRunId}
+            activeRunId={currentRunId}
+            onSelect={handleSelectRun}
             onSelectRun={handleSelectRun}
             onRetry={handleSubmit}
           />
@@ -187,7 +190,7 @@ export default function App() {
             <ReportPanel
               report={report}
               question={activeQuestion}
-              runId={activeRunId || report?.id}
+              runId={currentRunId}
             />
           )}
 

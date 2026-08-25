@@ -66,6 +66,13 @@ class RunSummaryResponse(BaseModel):
         from_attributes = True
 
 
+class StepDetailResponse(BaseModel):
+    node: str
+    loop: int = 0
+    payload: dict | None = None
+    logged_at: str
+
+
 class RunDetailResponse(BaseModel):
     id: str
     question: str
@@ -77,6 +84,7 @@ class RunDetailResponse(BaseModel):
     share_token: str | None = None
     is_public: bool = False
     views_count: int = 0
+    steps: list[StepDetailResponse] = []
     created_at: str
     finished_at: str | None
     error: str | None = None
@@ -300,13 +308,24 @@ async def get_research_run(
     if run.user_id and run.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to view this run")
 
+    logs = await get_step_logs(db, run_id)
     error_msg = None
     if run.status == RunStatus.failed:
-        logs = await get_step_logs(db, run_id)
         for l in reversed(logs):
             if l.step_name == "error" and l.payload and "error" in l.payload:
                 error_msg = l.payload["error"]
                 break
+
+    step_items = [
+        StepDetailResponse(
+            node=l.step_name,
+            loop=l.loop_index,
+            payload=l.payload,
+            logged_at=l.logged_at.isoformat(),
+        )
+        for l in logs
+        if l.step_name != "error"
+    ]
 
     return RunDetailResponse(
         id=str(run.id),
@@ -316,6 +335,10 @@ async def get_research_run(
         summary=run.summary,
         sources=run.sources or [],
         loop_count=run.loop_count,
+        share_token=run.share_token,
+        is_public=run.is_public or False,
+        views_count=run.views_count or 0,
+        steps=step_items,
         created_at=run.created_at.isoformat(),
         finished_at=run.finished_at.isoformat() if run.finished_at else None,
         error=error_msg,

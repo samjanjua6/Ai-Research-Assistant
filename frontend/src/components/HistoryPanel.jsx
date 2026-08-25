@@ -1,7 +1,9 @@
 /**
  * HistoryPanel — run cards with status dot, time, duration/loop chips, and retry buttons.
  */
-export default function HistoryPanel({ runs, activeRunId, onSelect, onRetry }) {
+export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun, onRetry }) {
+  const handleSelect = onSelect || onSelectRun || (() => {})
+
   return (
     <div className="card">
       <div className="eyebrow" style={{ marginBottom: 12 }}>Recent runs</div>
@@ -19,7 +21,7 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onRetry }) {
               <div
                 key={run.id}
                 className={`run-card${isActive ? ' active' : ''}`}
-                onClick={() => onSelect(run.id)}
+                onClick={() => handleSelect(run.id)}
               >
                 <div className="run-card-q" title={run.question}>
                   {run.question}

@@ -81,6 +81,7 @@ export function useResearch(currentUser = null) {
         cleanupRef.current = null
         if (data.status === 'done') {
           setReport({
+            id:           runId,
             summary:      data.summary,
             final_report: data.final_report,
             sources:      data.sources || [],
@@ -110,6 +111,8 @@ export function useResearch(currentUser = null) {
 
     try {
       const { run_id } = await startRun(question)
+      setActiveRunId(run_id)
+      activeRunIdRef.current = run_id
       await loadHistory()
       _startStream(run_id)
       return run_id
@@ -148,11 +151,19 @@ export function useResearch(currentUser = null) {
     try {
       const run = await getRun(runId)
 
+      if (run.steps && run.steps.length > 0) {
+        setSteps(run.steps)
+      }
+
       if (run.status === 'done') {
         setReport({
+          id:           run.id || runId,
           summary:      run.summary,
           final_report: run.final_report,
           sources:      run.sources || [],
+          share_token:  run.share_token,
+          is_public:    run.is_public,
+          views_count:  run.views_count,
         })
         setPhase('done')
       } else if (run.status === 'running') {
