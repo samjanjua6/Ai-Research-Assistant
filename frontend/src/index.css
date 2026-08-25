@@ -1116,18 +1116,173 @@ ul { list-style: none; padding: 0; margin: 0; }
   background: var(--violet-soft); border: 1px solid rgba(124,106,240,.3);
   border-radius: 8px; padding: 16px 18px;
 }
+.tldr-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .tldr .eyebrow { color: var(--violet); font-weight: 600; }
+.tldr-copy-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--violet);
+  background: var(--panel);
+  border: 1px solid rgba(124, 106, 240, 0.35);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.tldr-copy-btn:hover {
+  background: var(--violet);
+  color: #fff;
+}
 .tldr p { margin-top: 6px; font-size: 14px; line-height: 1.65; color: var(--text); }
 
 .report-body { margin-top: 24px; font-size: 14.5px; line-height: 1.75; color: var(--text-dim); }
 .report-body h1 { font-size: 22px; color: var(--text); margin-bottom: 16px; }
-.report-body h2 { font-size: 17px; color: var(--text); margin: 24px 0 10px; }
-.report-body h3 { font-size: 14.5px; color: var(--text); margin: 16px 0 8px; }
 .report-body p  { margin-bottom: 0.9em; }
 .report-body ul, .report-body ol { padding-left: 1.5em; margin-bottom: 0.9em; }
 .report-body li { margin-bottom: 0.3em; }
 .report-body code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: .88em; color: var(--code-text); }
 .report-body pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: .9em; border: 1px solid var(--border); }
+
+/* ── Section Heading Row with Hover Action Buttons ──────────────── */
+.section-heading-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 28px;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  scroll-margin-top: 80px;
+  transition: background-color .2s ease;
+}
+.section-heading-text {
+  margin: 0 !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  color: var(--text) !important;
+}
+.section-heading-container h2.section-heading-text {
+  font-size: 17px;
+  font-weight: 700;
+}
+.section-heading-container h3.section-heading-text {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.section-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+.section-heading-container:hover .section-heading-actions,
+.section-heading-container:focus-within .section-heading-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+.section-action-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+.section-action-btn:hover {
+  color: var(--violet);
+  border-color: var(--violet);
+  background: var(--violet-soft);
+}
+
+/* ── Code Block Container ───────────────────────────────────────── */
+.code-block-container {
+  position: relative;
+  margin-bottom: 1rem;
+}
+.code-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: rgba(30, 27, 56, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s ease, all .15s ease;
+}
+.code-block-container:hover .code-copy-btn {
+  opacity: 1;
+}
+.code-copy-btn:hover {
+  color: #fff;
+  border-color: var(--violet);
+  background: var(--violet);
+}
+
+/* ── Table Block Container ──────────────────────────────────────── */
+.table-block-container {
+  margin: 20px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-alt);
+  overflow: hidden;
+}
+.table-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--table-th-bg);
+  border-bottom: 1px solid var(--border);
+}
+.table-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.table-copy-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.table-copy-btn:hover {
+  color: var(--violet);
+  border-color: var(--violet);
+  background: var(--violet-soft);
+}
+.table-scroll-wrapper {
+  overflow-x: auto;
+}
+.table-scroll-wrapper table {
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
 
 /* Markdown Table Styles */
 .report-body table {

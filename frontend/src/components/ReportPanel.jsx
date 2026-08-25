@@ -9,6 +9,11 @@ import {
   getFaviconUrl,
   CitationBadge,
 } from '../utils/citations'
+import {
+  SectionHeading,
+  CodeBlock,
+  TableBlock,
+} from '../utils/sectionUtils'
 
 function normalizeMarkdown(text) {
   if (!text) return ''
@@ -76,7 +81,6 @@ function buildPDFDocument({ question, summary, finalReport, sources, markedFn })
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>${escapeHtml(question || 'Research Report')}</title>
 <style>
-/* ── Base ─────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   font-family: Georgia, 'Times New Roman', serif;
@@ -85,31 +89,14 @@ html, body {
   color: #1a1a2e;
   background: #fff;
 }
-
-/* ── Print page setup ─────────────────────────────────────────── */
-@page {
-  size: A4;
-  margin: 0;
-}
+@page { size: A4; margin: 0; }
 @media print {
   html, body { width: 210mm; }
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
-  .pdf-cover {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  .tldr-box, .sources-section, table, pre, blockquote {
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  .pdf-cover { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .tldr-box, .sources-section, table, pre, blockquote { page-break-inside: avoid; break-inside: avoid; }
   h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
 }
-
-/* ── Cover ────────────────────────────────────────────────────── */
 .pdf-cover {
   background: linear-gradient(135deg, #0f0c29 0%, #302b63 55%, #24243e 100%);
   color: #fff;
@@ -132,11 +119,7 @@ html, body {
   color: #ffffff;
   margin-bottom: 24px;
 }
-.cover-chips {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
+.cover-chips { display: flex; gap: 10px; flex-wrap: wrap; }
 .chip {
   font-family: 'Helvetica Neue', Arial, sans-serif;
   font-size: 8pt;
@@ -147,13 +130,7 @@ html, body {
   padding: 4px 12px;
   border-radius: 999px;
 }
-
-/* ── Body ─────────────────────────────────────────────────────── */
-.pdf-body {
-  padding: 40px 48px 56px;
-}
-
-/* ── TL;DR ────────────────────────────────────────────────────── */
+.pdf-body { padding: 40px 48px 56px; }
 .tldr-box {
   background: #f4f1fd;
   border: 1px solid #d9d2f8;
@@ -171,115 +148,26 @@ html, body {
   color: #7c6af0;
   margin-bottom: 6px;
 }
-.tldr-text {
-  font-size: 10.5pt;
-  line-height: 1.65;
-  color: #2d2b4e;
-}
-
-/* ── Typography & Headings ────────────────────────────────────── */
-h1, h2, h3, h4 {
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  color: #0f0c29;
-  margin-top: 28px;
-  margin-bottom: 12px;
-  line-height: 1.35;
-}
+.tldr-text { font-size: 10.5pt; line-height: 1.65; color: #2d2b4e; }
+h1, h2, h3, h4 { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0f0c29; margin-top: 28px; margin-bottom: 12px; line-height: 1.35; }
 h1 { font-size: 16pt; border-bottom: 2px solid #7c6af0; padding-bottom: 6px; }
 h2 { font-size: 13.5pt; color: #302b63; border-bottom: 1px solid #e8e4f8; padding-bottom: 4px; }
-h3 { font-size: 11.5pt; }
 p { margin-bottom: 14px; text-align: justify; }
 ul, ol { margin: 0 0 16px 24px; }
 li { margin-bottom: 6px; }
-blockquote {
-  border-left: 3px solid #7c6af0;
-  margin: 18px 0;
-  padding: 8px 18px;
-  color: #4a4870;
-  background: #faf9ff;
-  font-style: italic;
-}
-strong { color: #0f0c29; }
-code {
-  font-family: 'Courier New', monospace;
-  font-size: 9pt;
-  background: #f0edf9;
-  padding: 2px 5px;
-  border-radius: 3px;
-  color: #5a4fd0;
-}
-pre {
-  background: #1e1b38;
-  color: #e2dff8;
-  padding: 16px 20px;
-  border-radius: 6px;
-  overflow: hidden;
-  margin: 18px 0;
-  font-size: 9pt;
-  line-height: 1.5;
-}
-
-/* ── Tables ───────────────────────────────────────────────────── */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 24px 0;
-  font-size: 9.5pt;
-}
-th {
-  background: #302b63;
-  color: #fff;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 600;
-  text-align: left;
-  padding: 9px 12px;
-}
-td {
-  padding: 8px 12px;
-  border-bottom: 1px solid #e6e3f4;
-  color: #24243e;
-}
+blockquote { border-left: 3px solid #7c6af0; margin: 18px 0; padding: 8px 18px; color: #4a4870; background: #faf9ff; font-style: italic; }
+table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 9.5pt; }
+th { background: #302b63; color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 600; text-align: left; padding: 9px 12px; }
+td { padding: 8px 12px; border-bottom: 1px solid #e6e3f4; color: #24243e; }
 tr:nth-child(even) td { background: #f9f8fe; }
-
-/* ── Sources ──────────────────────────────────────────────────── */
-.section-label {
-  display: block;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 8pt;
-  font-weight: 800;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #7c6af0;
-  margin-bottom: 12px;
-}
-.sources-section {
-  margin-top: 36px;
-  padding-top: 22px;
-  border-top: 2px solid #e6e0ff;
-}
-.sources-list {
-  margin: 0 0 0 18px;
-}
-.sources-list li {
-  margin-bottom: 5px;
-  font-family: 'Courier New', monospace;
-  font-size: 8pt;
-  color: #5a4fd0;
-  word-break: break-all;
-}
-.pdf-footer {
-  margin-top: 44px;
-  padding-top: 14px;
-  border-top: 1px solid #eeeaff;
-  text-align: center;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 7.5pt;
-  color: #b0aed0;
-}
+.section-label { display: block; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: #7c6af0; margin-bottom: 12px; }
+.sources-section { margin-top: 36px; padding-top: 22px; border-top: 2px solid #e6e0ff; }
+.sources-list { margin: 0 0 0 18px; }
+.sources-list li { margin-bottom: 5px; font-family: 'Courier New', monospace; font-size: 8pt; color: #5a4fd0; word-break: break-all; }
+.pdf-footer { margin-top: 44px; padding-top: 14px; border-top: 1px solid #eeeaff; text-align: center; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 7.5pt; color: #b0aed0; }
 </style>
 </head>
 <body>
-
 <div class="pdf-cover">
   <div class="cover-app">🔬 &nbsp; Research Assistant &nbsp;·&nbsp; AI-Generated Report</div>
   <div class="cover-question">${escapeHtml(question || 'Research Report')}</div>
@@ -289,22 +177,19 @@ tr:nth-child(even) td { background: #f9f8fe; }
     <span class="chip">⚡ Powered by LangGraph</span>
   </div>
 </div>
-
 <div class="pdf-body">
   ${summaryHtml}
   <div class="report-content">${reportHtml}</div>
   ${sourcesHtml}
-  <div class="pdf-footer">
-    Generated by Research Assistant &nbsp;·&nbsp; research.mychatbot.codes &nbsp;·&nbsp; ${date}
-  </div>
+  <div class="pdf-footer">Generated by Research Assistant &nbsp;·&nbsp; research.mychatbot.codes &nbsp;·&nbsp; ${date}</div>
 </div>
-
 </body>
 </html>`
 }
 
 export default function ReportPanel({ report, question, runId }) {
   const [copied, setCopied] = useState(false)
+  const [copiedSummary, setCopiedSummary] = useState(false)
   const [copiedUrlIdx, setCopiedUrlIdx] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [showShare, setShowShare] = useState(false)
@@ -323,7 +208,7 @@ export default function ReportPanel({ report, question, runId }) {
     return countCitationFrequencies(report?.final_report || '')
   }, [report?.final_report])
 
-  // Markdown custom component mapping for citations
+  // Markdown custom component mapping for citations, headings, code, and tables
   const markdownComponents = useMemo(
     () => ({
       a: ({ href, children, ...props }) => {
@@ -339,17 +224,42 @@ export default function ReportPanel({ report, question, runId }) {
           </a>
         )
       },
+      h2: ({ children, ...props }) => (
+        <SectionHeading level={2} rawMarkdown={normalizedReport} {...props}>
+          {children}
+        </SectionHeading>
+      ),
+      h3: ({ children, ...props }) => (
+        <SectionHeading level={3} rawMarkdown={normalizedReport} {...props}>
+          {children}
+        </SectionHeading>
+      ),
+      pre: ({ children, ...props }) => (
+        <CodeBlock {...props}>{children}</CodeBlock>
+      ),
+      table: ({ children, ...props }) => (
+        <TableBlock {...props}>{children}</TableBlock>
+      ),
     }),
-    []
+    [normalizedReport]
   )
 
-  // ── Copy ──────────────────────────────────────────────────────
+  // ── Copy Full Report ──────────────────────────────────────────
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(report.final_report || '').then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })
   }, [report.final_report])
+
+  // ── Copy Executive Summary ────────────────────────────────────
+  const handleCopySummary = useCallback(() => {
+    if (!report.summary) return
+    navigator.clipboard.writeText(report.summary).then(() => {
+      setCopiedSummary(true)
+      setTimeout(() => setCopiedSummary(false), 1500)
+    })
+  }, [report.summary])
 
   const handleCopySourceUrl = useCallback((url, index) => {
     navigator.clipboard.writeText(url).then(() => {
@@ -469,15 +379,25 @@ export default function ReportPanel({ report, question, runId }) {
             📥 Download .md
           </button>
 
-          <button className="copy-btn" onClick={handleCopy} title="Copy to clipboard">
-            {copied ? '✓ Copied' : '📋 Copy'}
+          <button className="copy-btn" onClick={handleCopy} title="Copy entire report to clipboard">
+            {copied ? '✓ Copied' : '📋 Copy report'}
           </button>
         </div>
       </div>
 
       {report.summary && (
         <div className="tldr">
-          <div className="eyebrow">TL;DR</div>
+          <div className="tldr-header-row">
+            <div className="eyebrow">TL;DR Executive Summary</div>
+            <button
+              type="button"
+              className="tldr-copy-btn"
+              onClick={handleCopySummary}
+              title="Copy executive summary"
+            >
+              {copiedSummary ? '✓ Copied' : '📋 Copy summary'}
+            </button>
+          </div>
           <p>{report.summary}</p>
         </div>
       )}

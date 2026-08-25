@@ -10,6 +10,11 @@ import {
   getFaviconUrl,
   CitationBadge,
 } from '../utils/citations'
+import {
+  SectionHeading,
+  CodeBlock,
+  TableBlock,
+} from '../utils/sectionUtils'
 
 function normalizeMarkdown(text) {
   if (!text) return ''
@@ -187,6 +192,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
   const [error, setError] = useState(null)
   const [report, setReport] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [copiedSummary, setCopiedSummary] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedUrlIdx, setCopiedUrlIdx] = useState(null)
   const [exporting, setExporting] = useState(false)
@@ -225,7 +231,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
     return countCitationFrequencies(report?.final_report || '')
   }, [report?.final_report])
 
-  // Markdown custom components mapping for citations
+  // Markdown custom components mapping for citations, headings, code, and tables
   const markdownComponents = useMemo(
     () => ({
       a: ({ href, children, ...props }) => {
@@ -241,8 +247,24 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
           </a>
         )
       },
+      h2: ({ children, ...props }) => (
+        <SectionHeading level={2} rawMarkdown={normalizedReport} {...props}>
+          {children}
+        </SectionHeading>
+      ),
+      h3: ({ children, ...props }) => (
+        <SectionHeading level={3} rawMarkdown={normalizedReport} {...props}>
+          {children}
+        </SectionHeading>
+      ),
+      pre: ({ children, ...props }) => (
+        <CodeBlock {...props}>{children}</CodeBlock>
+      ),
+      table: ({ children, ...props }) => (
+        <TableBlock {...props}>{children}</TableBlock>
+      ),
     }),
-    []
+    [normalizedReport]
   )
 
   // ── Copy Markdown Handler ──────────────────────────────────────
@@ -253,6 +275,15 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
       setTimeout(() => setCopied(false), 2000)
     })
   }, [report?.final_report])
+
+  // ── Copy Executive Summary ────────────────────────────────────
+  const handleCopySummary = useCallback(() => {
+    if (!report?.summary) return
+    navigator.clipboard.writeText(report.summary).then(() => {
+      setCopiedSummary(true)
+      setTimeout(() => setCopiedSummary(false), 1500)
+    })
+  }, [report?.summary])
 
   // ── Copy Link Handler ──────────────────────────────────────────
   const handleCopyLink = useCallback(() => {
@@ -423,10 +454,10 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                     <>📄 Export PDF</>
                   )}
                 </button>
-                <button className="copy-btn" onClick={handleCopyMarkdown}>
-                  {copied ? '✓ Copied!' : '📋 Copy Markdown'}
+                <button className="copy-btn" onClick={handleCopyMarkdown} title="Copy entire report markdown">
+                  {copied ? '✓ Copied!' : '📋 Copy Report'}
                 </button>
-                <button className="copy-btn" onClick={handleCopyLink}>
+                <button className="copy-btn" onClick={handleCopyLink} title="Copy shareable link">
                   {copiedLink ? '✓ Link Copied!' : '🔗 Copy Link'}
                 </button>
                 {onForkQuestion && (
@@ -444,7 +475,17 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
             {/* TL;DR Executive Summary */}
             {report.summary && (
               <div className="card tldr" style={{ marginTop: '20px' }}>
-                <div className="eyebrow">TL;DR Executive Summary</div>
+                <div className="tldr-header-row">
+                  <div className="eyebrow">TL;DR Executive Summary</div>
+                  <button
+                    type="button"
+                    className="tldr-copy-btn"
+                    onClick={handleCopySummary}
+                    title="Copy executive summary"
+                  >
+                    {copiedSummary ? '✓ Copied' : '📋 Copy summary'}
+                  </button>
+                </div>
                 <p>{report.summary}</p>
               </div>
             )}
