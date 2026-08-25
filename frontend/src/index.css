@@ -1,32 +1,68 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
-/* ── Design tokens ────────────────────────────────────────────── */
-:root {
-  --bg:           #0A0C12;
-  --panel:        #12151F;
-  --panel-alt:    #171B27;
-  --border:       #232838;
-  --border-hover: #343B52;
-  --text:         #E7E9F0;
-  --text-dim:     #9297AC;
-  --text-faint:   #5B6178;
-  --violet:       #7C6AF0;
-  --violet-hover: #6C5CE8;
-  --violet-soft:  rgba(124,106,240,.14);
-  --teal:         #33D6A6;
-  --teal-soft:    rgba(51,214,166,.14);
-  --amber:        #F5A623;
-  --amber-soft:   rgba(245,166,35,.14);
-  --rose:         #F0576B;
-  --rose-hover:   #E03B51;
-  --rose-soft:    rgba(240,87,107,.14);
-  --radius:       12px;
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body:    'Inter', sans-serif;
-  --font-mono:    'IBM Plex Mono', monospace;
+/* ── Design tokens (Dark Theme / Default) ────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg:             #0A0C12;
+  --panel:          #12151F;
+  --panel-alt:      #171B27;
+  --border:         #232838;
+  --border-hover:   #343B52;
+  --text:           #E7E9F0;
+  --text-dim:       #9297AC;
+  --text-faint:     #5B6178;
+  --violet:         #7C6AF0;
+  --violet-hover:   #6C5CE8;
+  --violet-soft:    rgba(124,106,240,.14);
+  --teal:           #33D6A6;
+  --teal-soft:      rgba(51,214,166,.14);
+  --amber:          #F5A623;
+  --amber-soft:     rgba(245,166,35,.14);
+  --rose:           #F0576B;
+  --rose-hover:     #E03B51;
+  --rose-soft:      rgba(240,87,107,.14);
+  --card-shadow:    0 4px 20px rgba(0, 0, 0, 0.25);
+  --modal-overlay:  rgba(0, 0, 0, 0.65);
+  --topbar-bg:      rgba(10, 12, 18, 0.95);
+  --table-stripe:   rgba(10, 12, 18, 0.35);
+  --table-th-bg:    rgba(35, 40, 56, 0.8);
+  --code-bg:        #171B27;
+  --code-text:      #33D6A6;
+  --radius:         12px;
+  --font-display:   'Space Grotesk', sans-serif;
+  --font-body:      'Inter', sans-serif;
+  --font-mono:      'IBM Plex Mono', monospace;
 }
 
-/* ── Reset ─────────────────────────────────────────────────────── */
+/* ── Light Theme Design Tokens ───────────────────────────────────── */
+[data-theme="light"] {
+  --bg:             #F8F9FD;
+  --panel:          #FFFFFF;
+  --panel-alt:      #F0F2F9;
+  --border:         #E1E4F0;
+  --border-hover:   #CBD0E0;
+  --text:           #0F1424;
+  --text-dim:       #525875;
+  --text-faint:     #8890A6;
+  --violet:         #6355DC;
+  --violet-hover:   #5243CC;
+  --violet-soft:    rgba(99, 85, 220, 0.09);
+  --teal:           #059669;
+  --teal-soft:      rgba(5, 150, 105, 0.1);
+  --amber:          #D97706;
+  --amber-soft:     rgba(217, 119, 6, 0.1);
+  --rose:           #E11D48;
+  --rose-hover:     #BE123C;
+  --rose-soft:      rgba(225, 29, 72, 0.1);
+  --card-shadow:    0 4px 20px rgba(15, 20, 36, 0.06);
+  --modal-overlay:  rgba(15, 20, 36, 0.45);
+  --topbar-bg:      rgba(255, 255, 255, 0.88);
+  --table-stripe:   rgba(0, 0, 0, 0.02);
+  --table-th-bg:    #F0F2F9;
+  --code-bg:        #EEF1F8;
+  --code-text:      #059669;
+}
+
+/* ── Reset & Global Transitions ──────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 *:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
 body {
@@ -36,6 +72,7 @@ body {
   min-height: 100vh;
   width: 100%;
   -webkit-font-smoothing: antialiased;
+  transition: background-color .2s ease, color .2s ease;
 }
 h1, h2, h3 { font-family: var(--font-display); margin: 0; }
 p { margin: 0; }
@@ -55,9 +92,10 @@ ul { list-style: none; padding: 0; margin: 0; }
   padding: 16px 36px;
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 100;
-  background: rgba(10, 12, 18, 0.95);
+  background: var(--topbar-bg);
   backdrop-filter: blur(12px);
   width: 100%;
+  transition: background-color .2s ease, border-color .2s ease;
 }
 .topbar-brand {
   display: flex; align-items: center; gap: 10px;
@@ -75,12 +113,54 @@ ul { list-style: none; padding: 0; margin: 0; }
   font-family: var(--font-mono); font-size: 11px;
   color: var(--text-dim); border: 1px solid var(--border);
   padding: 5px 12px; border-radius: 999px; background: var(--panel-alt);
+  transition: background-color .2s, border-color .2s, color .2s;
 }
 
-/* ── Topbar right slot (badge + auth) ────────────────────────────── */
+/* ── Topbar right slot (badge + theme + auth) ─────────────────────── */
 .topbar-right {
   display: flex; align-items: center; gap: 12px;
 }
+
+/* ── Theme Toggle Segmented Control ─────────────────────────────── */
+.theme-toggle-group {
+  display: flex;
+  align-items: center;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+  transition: background-color .2s, border-color .2s;
+}
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0;
+  transition: all .15s ease;
+}
+.theme-toggle-btn:hover {
+  color: var(--text);
+  background: rgba(124, 106, 240, 0.08);
+}
+.theme-toggle-btn.active {
+  background: var(--panel);
+  color: var(--violet);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.theme-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 
 /* ── User menu ──────────────────────────────────────────────────── */
 .user-menu {
@@ -129,16 +209,18 @@ ul { list-style: none; padding: 0; margin: 0; }
 /* ── Modal overlay & box ───────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 500;
-  background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+  background: var(--modal-overlay); backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
   padding: 16px;
+  transition: background-color .2s ease;
 }
 .modal-box {
   background: var(--panel); border: 1px solid var(--border);
   border-radius: 18px; width: 100%;
-  box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  box-shadow: 0 24px 80px rgba(0,0,0,.35);
   display: flex; flex-direction: column;
   max-height: 90vh; overflow: hidden;
+  transition: background-color .2s ease, border-color .2s ease;
 }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -312,7 +394,8 @@ ul { list-style: none; padding: 0; margin: 0; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--card-shadow);
+  transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
 
 /* ── Eyebrow ─────────────────────────────────────────────────────  */
@@ -756,8 +839,8 @@ ul { list-style: none; padding: 0; margin: 0; }
 .report-body p  { margin-bottom: 0.9em; }
 .report-body ul, .report-body ol { padding-left: 1.5em; margin-bottom: 0.9em; }
 .report-body li { margin-bottom: 0.3em; }
-.report-body code { background: var(--panel-alt); padding: 2px 6px; border-radius: 4px; font-size: .88em; color: var(--teal); }
-.report-body pre { background: var(--panel-alt); padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: .9em; }
+.report-body code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: .88em; color: var(--code-text); }
+.report-body pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: .9em; border: 1px solid var(--border); }
 
 /* Markdown Table Styles */
 .report-body table {
@@ -772,7 +855,7 @@ ul { list-style: none; padding: 0; margin: 0; }
   display: table;
 }
 .report-body th {
-  background: rgba(35, 40, 56, 0.8);
+  background: var(--table-th-bg);
   color: var(--text);
   font-family: var(--font-display);
   font-weight: 600;
@@ -792,10 +875,10 @@ ul { list-style: none; padding: 0; margin: 0; }
   border-bottom: none;
 }
 .report-body tr:nth-child(even) {
-  background: rgba(10, 12, 18, 0.35);
+  background: var(--table-stripe);
 }
 .report-body tr:hover td {
-  background: rgba(124, 106, 240, 0.04);
+  background: var(--violet-soft);
   color: var(--text);
 }
 .report-body blockquote {

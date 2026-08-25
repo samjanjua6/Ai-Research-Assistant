@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
+import { ThemeToggle } from './ThemeToggle'
 
 export default function Header() {
   const { user, logout } = useAuth()
@@ -26,6 +27,8 @@ export default function Header() {
 
         <div className="topbar-right">
           <span className="topbar-badge">Powered by LangGraph</span>
+
+          <ThemeToggle />
 
           {user ? (
             <div className="user-menu">
