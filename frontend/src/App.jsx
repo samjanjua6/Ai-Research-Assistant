@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useResearch } from './hooks/useResearch'
 import { AuthModal } from './components/AuthModal'
@@ -19,6 +19,13 @@ function getShareTokenFromPath() {
   return match ? match[1] : null
 }
 
+function getInitialSidebarState() {
+  if (typeof window === 'undefined') return false
+  const saved = localStorage.getItem('sidebar_collapsed')
+  if (saved !== null) return saved === 'true'
+  return window.innerWidth < 1100
+}
+
 export default function App() {
   const { user, loading: authLoading } = useAuth()
   const {
@@ -36,18 +43,55 @@ export default function App() {
     activeRunId: hookActiveRunId,
   } = useResearch(user)
 
-  const [shareToken,     setShareToken]     = useState(getShareTokenFromPath)
-  const [activeRunId,    setActiveRunId]    = useState(null)
-  const [activeQuestion, setActiveQuestion] = useState(null)
-  const [formQuestion,   setFormQuestion]   = useState('')
-  const [showBanner,     setShowBanner]     = useState(true)
-
-  const currentRunId = activeRunId || hookActiveRunId || report?.id
+  const [shareToken,          setShareToken]          = useState(getShareTokenFromPath)
+  const [isSidebarCollapsed,  setIsSidebarCollapsed]  = useState(getInitialSidebarState)
+  const [activeRunId,         setActiveRunId]         = useState(null)
+  const [activeQuestion,      setActiveQuestion]      = useState(null)
+  const [formQuestion,        setFormQuestion]        = useState('')
+  const [showBanner,          setShowBanner]          = useState(true)
 
   // Guest draft preservation — if user types before logging in
   const [pendingQuestion,  setPendingQuestion]  = useState(null)
   const [showAuthModal,    setShowAuthModal]    = useState(false)
   const [authDefaultTab,   setAuthDefaultTab]   = useState('login')
+
+  const currentRunId = activeRunId || hookActiveRunId || report?.id
+
+  // Toggle sidebar and persist
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sidebar_collapsed', String(next))
+      }
+      return next
+    })
+  }, [])
+
+  // Quick New Research action from header when collapsed
+  const handleNewResearch = useCallback(() => {
+    if (isSidebarCollapsed) {
+      setIsSidebarCollapsed(false)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sidebar_collapsed', 'false')
+      }
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [isSidebarCollapsed])
+
+  // Listen to keyboard shortcut: Ctrl+B / Cmd+B and Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        handleToggleSidebar()
+      } else if (e.key === 'Escape' && !isSidebarCollapsed && typeof window !== 'undefined' && window.innerWidth < 1100) {
+        setIsSidebarCollapsed(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleToggleSidebar, isSidebarCollapsed])
 
   // Listen to browser back/forward navigation
   useEffect(() => {
@@ -72,6 +116,11 @@ export default function App() {
     setActiveQuestion(question)
     setFormQuestion(question)
     submit(question)
+
+    // On mobile, auto-close sidebar drawer upon submitting
+    if (typeof window !== 'undefined' && window.innerWidth < 1100) {
+      setIsSidebarCollapsed(true)
+    }
   }
 
   const handleAuthSuccess = () => {
@@ -87,11 +136,16 @@ export default function App() {
   }
 
   const handleSelectRun = (runId) => {
-    const run = history.find(r => r.id === runId)
+    const run = history.find((r) => r.id === runId)
     setActiveRunId(runId)
     setActiveQuestion(run?.question || null)
     if (run?.question) setFormQuestion(run.question)
     viewRun(runId)
+
+    // On mobile, auto-close sidebar drawer upon selecting a run
+    if (typeof window !== 'undefined' && window.innerWidth < 1100) {
+      setIsSidebarCollapsed(true)
+    }
   }
 
   const handleSuggestion = (question) => {
@@ -144,11 +198,53 @@ export default function App() {
 
   return (
     <>
-      <Header />
+      <Header
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={handleToggleSidebar}
+        onNewResearch={handleNewResearch}
+      />
 
-      <div className="layout">
+      {/* Mobile drawer backdrop when sidebar is open on screens < 1100px */}
+      {!isSidebarCollapsed && (
+        <div
+          className="sidebar-drawer-backdrop"
+          onClick={() => setIsSidebarCollapsed(true)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Floating expand tab button when collapsed on desktop */}
+      {isSidebarCollapsed && (
+        <button
+          type="button"
+          className="floating-sidebar-tab animate-in"
+          onClick={handleToggleSidebar}
+          title="Expand sidebar (Ctrl+B)"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+            <line x1="9" x2="9" y1="3" y2="21"/>
+          </svg>
+          <span>Sidebar</span>
+        </button>
+      )}
+
+      <div className={`layout${isSidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
         {/* Left column — question form + run history */}
         <aside className="sidebar">
+          <div className="sidebar-top-row">
+            <span className="sidebar-top-label">Workspace</span>
+            <button
+              type="button"
+              className="sidebar-collapse-btn"
+              onClick={handleToggleSidebar}
+              title="Collapse sidebar (Ctrl+B)"
+              aria-label="Collapse sidebar"
+            >
+              «
+            </button>
+          </div>
+
           <QuestionForm
             question={formQuestion}
             onQuestionChange={setFormQuestion}

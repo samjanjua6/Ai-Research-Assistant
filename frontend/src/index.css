@@ -97,6 +97,53 @@ ul { list-style: none; padding: 0; margin: 0; }
   width: 100%;
   transition: background-color .2s ease, border-color .2s ease;
 }
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.sidebar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-alt);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.sidebar-toggle-btn:hover {
+  color: var(--text);
+  border-color: var(--violet);
+  background: var(--violet-soft);
+}
+.sidebar-toggle-btn.active {
+  color: var(--violet);
+  border-color: var(--violet);
+  background: var(--violet-soft);
+}
+.topbar-new-research-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--violet);
+  background: var(--violet-soft);
+  border: 1px solid rgba(124, 106, 240, 0.35);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.topbar-new-research-btn:hover {
+  background: var(--violet);
+  color: #fff;
+}
 .topbar-brand {
   display: flex; align-items: center; gap: 10px;
   font-family: var(--font-display); font-weight: 600; font-size: 18px;
@@ -373,20 +420,135 @@ ul { list-style: none; padding: 0; margin: 0; }
   padding: 28px 36px;
   flex: 1;
   align-items: start;
+  transition: grid-template-columns .28s cubic-bezier(0.4, 0, 0.2, 1), gap .28s ease;
 }
-@media (max-width: 1100px) {
-  .layout {
-    grid-template-columns: 1fr;
-    padding: 20px;
-    gap: 20px;
-  }
-  .sidebar { order: 2; }
-  .run-panel { order: 1; }
-  .topbar { padding: 14px 20px; }
+.layout.sidebar-collapsed {
+  grid-template-columns: 0px minmax(0, 1fr);
+  gap: 0px;
+}
+.layout.sidebar-collapsed .sidebar {
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  transform: translateX(-20px);
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────  */
-.sidebar { display: flex; flex-direction: column; gap: 20px; }
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  transition: opacity .25s ease, transform .25s ease;
+}
+.sidebar-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+.sidebar-top-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.sidebar-collapse-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.sidebar-collapse-btn:hover {
+  background: var(--panel-alt);
+  color: var(--text);
+  border-color: var(--violet);
+}
+
+/* ── Floating Sidebar Expand Tab (Desktop) ──────────────────────── */
+.floating-sidebar-tab {
+  position: fixed;
+  left: 0;
+  top: 110px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 8px 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 2px 4px 16px rgba(0, 0, 0, 0.15);
+  transition: all .18s ease;
+}
+.floating-sidebar-tab:hover {
+  background: var(--violet-soft);
+  color: var(--violet);
+  border-color: var(--violet);
+  padding-left: 12px;
+}
+
+.sidebar-drawer-backdrop {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .floating-sidebar-tab {
+    display: none;
+  }
+  .layout {
+    display: block;
+    padding: 20px;
+  }
+  .layout.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .sidebar {
+    position: fixed;
+    top: 65px;
+    left: 0;
+    bottom: 0;
+    width: 350px;
+    max-width: 85vw;
+    z-index: 300;
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.25);
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+    transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1), opacity .25s ease;
+  }
+  .sidebar-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    top: 65px;
+    z-index: 290;
+    background: var(--modal-overlay);
+    backdrop-filter: blur(3px);
+    animation: fadeIn .2s ease;
+  }
+  .topbar { padding: 14px 20px; }
+}
 
 /* ── Card ─────────────────────────────────────────────────────── */
 .card {
