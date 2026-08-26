@@ -1,23 +1,28 @@
+import { Zap, Atom, Dna, Rocket } from 'lucide-react'
 import { WelcomeHeroIllustration } from './illustrations/EmptyStateIllustrations'
 
 const SUGGESTIONS = [
   {
-    icon: '⚡',
+    icon: <Zap size={18} strokeWidth={2} />,
+    colorClass: 'badge-amber',
     title: 'Solid-State Batteries',
     query: 'What are the latest breakthroughs and commercialization milestones for solid-state batteries in 2026?',
   },
   {
-    icon: '🔬',
+    icon: <Atom size={18} strokeWidth={2} />,
+    colorClass: 'badge-violet',
     title: 'Quantum Computing',
     query: 'What are the latest breakthroughs in fault-tolerant quantum computing architectures?',
   },
   {
-    icon: '🧬',
+    icon: <Dna size={18} strokeWidth={2} />,
+    colorClass: 'badge-emerald',
     title: 'AI in Drug Discovery',
     query: 'How are generative AI models accelerating novel drug discovery and clinical trials?',
   },
   {
-    icon: '🚀',
+    icon: <Rocket size={18} strokeWidth={2} />,
+    colorClass: 'badge-cyan',
     title: 'Commercial Fusion Energy',
     query: 'What is the current status and roadmap of private commercial fusion energy ventures?',
   },
@@ -46,7 +51,9 @@ export default function Placeholder({ onSelectSuggestion }) {
               onClick={() => onSelectSuggestion?.(item.query)}
               type="button"
             >
-              <div className="suggestion-icon">{item.icon}</div>
+              <div className={`suggestion-icon-badge ${item.colorClass}`}>
+                {item.icon}
+              </div>
               <div className="suggestion-info">
                 <div className="suggestion-title">{item.title}</div>
                 <div className="suggestion-query">{item.query}</div>

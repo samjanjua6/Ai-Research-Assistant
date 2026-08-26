@@ -12,6 +12,19 @@ import {
   CitationBadge,
 } from '../utils/citations'
 import {
+  CheckCircle2,
+  Calendar,
+  Link2,
+  Eye,
+  FileDown,
+  Copy,
+  Check,
+  Sparkles,
+  ExternalLink,
+  ArrowUp,
+  ShieldCheck,
+} from 'lucide-react'
+import {
   SectionHeading,
   CodeBlock,
   TableBlock,
@@ -370,15 +383,17 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
       {/* ── Public Topbar ── */}
       <div className="topbar">
         <div className="topbar-brand" onClick={onGoHome} style={{ cursor: 'pointer' }}>
-          <span className="topbar-mark">🔬</span>
+          <span className="topbar-mark">
+            <Sparkles size={15} strokeWidth={2.2} />
+          </span>
           Research Assistant
         </div>
 
         <div className="topbar-right">
           <span className="topbar-badge">Public Report</span>
           <ThemeToggle />
-          <button className="btn btn-primary btn-sm" onClick={onGoHome}>
-            🔬 Open Assistant
+          <button className="btn btn-primary btn-sm" onClick={onGoHome} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Sparkles size={13} strokeWidth={2} /> Open Assistant
           </button>
         </div>
       </div>
@@ -419,7 +434,9 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
               <h1 className="public-report-title">{report.question}</h1>
 
               <div className="meta-row" style={{ marginTop: '12px' }}>
-                <span className="status-pill status-pill-done">✓ Completed</span>
+                <span className="status-pill status-pill-done">
+                  <CheckCircle2 size={12} strokeWidth={2.2} /> Completed
+                </span>
                 {report.author_name && (
                   <span className="stat">
                     Researched by <b>{report.author_name}</b>
@@ -427,17 +444,17 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                 )}
                 {formattedDate && (
                   <span className="stat">
-                    📅 <b>{formattedDate}</b>
+                    <Calendar size={12} strokeWidth={2} /> <b>{formattedDate}</b>
                   </span>
                 )}
                 {report.sources?.length > 0 && (
                   <span className="stat">
-                    🔗 <b>{report.sources.length} sources</b>
+                    <Link2 size={12} strokeWidth={2} /> <b>{report.sources.length} sources</b>
                   </span>
                 )}
                 {report.views_count > 0 && (
                   <span className="stat">
-                    👁 <b>{report.views_count} views</b>
+                    <Eye size={12} strokeWidth={2} /> <b>{report.views_count} views</b>
                   </span>
                 )}
               </div>
@@ -454,22 +471,40 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                       <span className="pdf-spinner" /> Generating…
                     </>
                   ) : (
-                    <>📄 Export PDF</>
+                    <>
+                      <FileDown size={13} strokeWidth={1.75} /> Export PDF
+                    </>
                   )}
                 </button>
                 <button className="copy-btn" onClick={handleCopyMarkdown} title="Copy entire report markdown">
-                  {copied ? '✓ Copied!' : '📋 Copy Report'}
+                  {copied ? (
+                    <>
+                      <Check size={13} strokeWidth={2.2} className="icon-success-pop" /> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} strokeWidth={1.75} /> Copy Report
+                    </>
+                  )}
                 </button>
                 <button className="copy-btn" onClick={handleCopyLink} title="Copy shareable link">
-                  {copiedLink ? '✓ Link Copied!' : '🔗 Copy Link'}
+                  {copiedLink ? (
+                    <>
+                      <Check size={13} strokeWidth={2.2} className="icon-success-pop" /> Link Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Link2 size={13} strokeWidth={1.75} /> Copy Link
+                    </>
+                  )}
                 </button>
                 {onForkQuestion && (
                   <button
                     className="btn btn-primary btn-sm"
                     onClick={() => onForkQuestion(report.question)}
-                    style={{ marginLeft: 'auto' }}
+                    style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   >
-                    🚀 Research This Topic →
+                    <Sparkles size={13} strokeWidth={2} /> Research This Topic →
                   </button>
                 )}
               </div>
@@ -486,7 +521,15 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                     onClick={handleCopySummary}
                     title="Copy executive summary"
                   >
-                    {copiedSummary ? '✓ Copied' : '📋 Copy summary'}
+                    {copiedSummary ? (
+                      <>
+                        <Check size={12} strokeWidth={2.2} className="icon-success-pop" /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} strokeWidth={1.75} /> Copy summary
+                      </>
+                    )}
                   </button>
                 </div>
                 <p>{report.summary}</p>
@@ -504,7 +547,9 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
               {/* Sources */}
               {report.sources?.length > 0 && (
                 <div className="sources-section" id="publicSourcesSection">
-                  <span className="eyebrow">Verified Web Sources ({report.sources.length})</span>
+                  <span className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <ShieldCheck size={14} strokeWidth={2} /> Verified Web Sources ({report.sources.length})
+                  </span>
                   <ul className="sources-list-enhanced">
                     {report.sources.map((url, i) => {
                       const num = i + 1
@@ -541,7 +586,15 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                                 onClick={() => handleCopySourceUrl(url, i)}
                                 title="Copy source URL"
                               >
-                                {copiedUrlIdx === i ? '✓ Copied' : '📋 Copy'}
+                                {copiedUrlIdx === i ? (
+                                  <>
+                                    <Check size={11} strokeWidth={2.2} className="icon-success-pop" /> Copied
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={11} strokeWidth={1.75} /> Copy
+                                  </>
+                                )}
                               </button>
 
                               <button
@@ -553,7 +606,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                                 }}
                                 title="Jump back to report text"
                               >
-                                ↩ Back
+                                <ArrowUp size={11} strokeWidth={2} /> Top
                               </button>
                             </div>
                           </div>
@@ -566,7 +619,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                             title={url}
                           >
                             <span>{url}</span>
-                            <span className="source-external-arrow">↗</span>
+                            <ExternalLink size={11} strokeWidth={2} className="source-external-icon" />
                           </a>
                         </li>
                       )
@@ -579,8 +632,8 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
             {/* Bottom Callout Banner */}
             <div className="public-cta-banner card" style={{ marginTop: '24px' }}>
               <div className="public-cta-content">
-                <span className="topbar-mark" style={{ width: '36px', height: '36px', fontSize: '18px' }}>
-                  🔬
+                <span className="topbar-mark" style={{ width: '36px', height: '36px' }}>
+                  <Sparkles size={18} strokeWidth={2} />
                 </span>
                 <div>
                   <h4 style={{ fontSize: '15px', fontWeight: 600 }}>Explore any topic with AI Research Assistant</h4>
@@ -589,8 +642,9 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                   </p>
                 </div>
               </div>
-              <button className="btn btn-primary" onClick={onGoHome}>
-                Try Free Assistant →
+              <button className="btn btn-primary" onClick={onGoHome} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span>Try Free Assistant</span>
+                <Sparkles size={13} strokeWidth={2} />
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronDown, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
@@ -57,7 +58,9 @@ function StepItem({ label, chips = [], children, isDone, isActive, defaultOpen =
               ))}
             </span>
           )}
-          <span className={`step-chevron${open ? ' open' : ''}`}>⌄</span>
+          <span className={`step-chevron${open ? ' open' : ''}`}>
+            <ChevronDown size={14} strokeWidth={2} />
+          </span>
         </button>
 
         <div className={`step-details${open ? ' open' : ''}`}>
@@ -84,7 +87,15 @@ function LoopItem({ loop, defaultOpen }) {
         <span className={`loop-sq${isApproved ? ' loop-sq-approved' : ' loop-sq-revise'}`} />
         <span className="loop-label">Loop {loop.number}</span>
         <span className={`verdict${isApproved ? ' verdict-approved' : ' verdict-revise'}`}>
-          {isApproved ? 'Approved' : 'Needs revision'}
+          {isApproved ? (
+            <>
+              <CheckCircle2 size={11} strokeWidth={2.2} /> Approved
+            </>
+          ) : (
+            <>
+              <AlertCircle size={11} strokeWidth={2.2} /> Needs revision
+            </>
+          )}
         </span>
       </button>
 

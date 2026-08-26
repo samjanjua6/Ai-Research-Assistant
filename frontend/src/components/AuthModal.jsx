@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Eye, EyeOff, AlertCircle, X, ArrowRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { TermsModal } from './TermsModal'
@@ -43,7 +44,7 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
     clearError()
     try {
       const user = await login({ email: loginEmail, password: loginPassword })
-      toastSuccess(`Welcome back, ${user.name}!`, { title: '✨ Signed In' })
+      toastSuccess(`Welcome back, ${user.name}!`, { title: 'Signed In' })
       onSuccess?.(user)
     } catch (err) {
       setError(err.message)
@@ -72,7 +73,7 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
         email: signupEmail,
       })
       setSignupStep('otp')
-      toastInfo(`Verification code sent to ${signupEmail}`, { title: '📬 Check Your Email' })
+      toastInfo(`Verification code sent to ${signupEmail}`, { title: 'Check Your Email' })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -93,12 +94,12 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
         otp: otpCode,
       })
       toastSuccess(`Account created & email verified! Welcome, ${user.name}!`, {
-        title: '🎉 Account Created',
+        title: 'Account Created',
       })
       onSuccess?.(user)
     } catch (err) {
       setError(err.message)
-      toastError(err.message || 'Invalid verification code', { title: '❌ Verification Failed' })
+      toastError(err.message || 'Invalid verification code', { title: 'Verification Failed' })
     } finally {
       setLoading(false)
     }
@@ -112,10 +113,10 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
         name: signupName,
         email: signupEmail,
       })
-      toastInfo(`New verification code sent to ${signupEmail}`, { title: '📬 Code Resent' })
+      toastInfo(`New verification code sent to ${signupEmail}`, { title: 'Code Resent' })
     } catch (err) {
       setError(err.message)
-      toastError(err.message, { title: '❌ Resend Failed' })
+      toastError(err.message, { title: 'Resend Failed' })
     }
   }
 
@@ -145,7 +146,7 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
                 : 'Create your account'}
             </h2>
             <button className="modal-close" onClick={onClose} aria-label="Close">
-              ✕
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
 
@@ -170,9 +171,11 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
           {/* Error banner (on form view) */}
           {error && signupStep === 'form' && (
             <div className="auth-error" role="alert">
-              <span>⚠ {error}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <AlertCircle size={14} strokeWidth={2} /> {error}
+              </span>
               <button className="auth-error-dismiss" onClick={clearError}>
-                ✕
+                <X size={13} strokeWidth={2} />
               </button>
             </div>
           )}
@@ -217,7 +220,11 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
                     onClick={() => setShowLoginPw((s) => !s)}
                     aria-label={showLoginPw ? 'Hide password' : 'Show password'}
                   >
-                    {showLoginPw ? '🙈' : '👁'}
+                    {showLoginPw ? (
+                      <EyeOff size={15} strokeWidth={1.75} />
+                    ) : (
+                      <Eye size={15} strokeWidth={1.75} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -296,7 +303,11 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
                     onClick={() => setShowSignupPw((s) => !s)}
                     aria-label={showSignupPw ? 'Hide password' : 'Show password'}
                   >
-                    {showSignupPw ? '🙈' : '👁'}
+                    {showSignupPw ? (
+                      <EyeOff size={15} strokeWidth={1.75} />
+                    ) : (
+                      <Eye size={15} strokeWidth={1.75} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -326,8 +337,14 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
                 className="btn btn-primary btn-full"
                 type="submit"
                 disabled={loading || !termsAccepted}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               >
-                {loading ? 'Sending verification code…' : 'Continue →'}
+                {loading ? 'Sending verification code…' : (
+                  <>
+                    <span>Continue</span>
+                    <ArrowRight size={14} strokeWidth={2} />
+                  </>
+                )}
               </button>
 
               <p className="auth-switch">

@@ -11,6 +11,16 @@ import {
   CitationBadge,
 } from '../utils/citations'
 import {
+  Share2,
+  FileDown,
+  Download,
+  Copy,
+  Check,
+  ExternalLink,
+  ArrowUp,
+  ShieldCheck,
+} from 'lucide-react'
+import {
   SectionHeading,
   CodeBlock,
   TableBlock,
@@ -358,7 +368,7 @@ export default function ReportPanel({ report, question, runId }) {
               onClick={() => setShowShare(true)}
               title="Share report with a public link"
             >
-              🔗 Share
+              <Share2 size={13} strokeWidth={1.75} /> Share
             </button>
           )}
 
@@ -373,16 +383,26 @@ export default function ReportPanel({ report, question, runId }) {
                 <span className="pdf-spinner" />Generating…
               </>
             ) : (
-              <>📄 Export PDF</>
+              <>
+                <FileDown size={13} strokeWidth={1.75} /> Export PDF
+              </>
             )}
           </button>
 
           <button className="copy-btn" onClick={handleDownload} title="Download as Markdown">
-            📥 Download .md
+            <Download size={13} strokeWidth={1.75} /> Download .md
           </button>
 
           <button className="copy-btn" onClick={handleCopy} title="Copy entire report to clipboard">
-            {copied ? '✓ Copied' : '📋 Copy report'}
+            {copied ? (
+              <>
+                <Check size={13} strokeWidth={2.2} className="icon-success-pop" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy size={13} strokeWidth={1.75} /> Copy report
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -397,7 +417,15 @@ export default function ReportPanel({ report, question, runId }) {
               onClick={handleCopySummary}
               title="Copy executive summary"
             >
-              {copiedSummary ? '✓ Copied' : '📋 Copy summary'}
+              {copiedSummary ? (
+                <>
+                  <Check size={12} strokeWidth={2.2} className="icon-success-pop" /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy size={12} strokeWidth={1.75} /> Copy summary
+                </>
+              )}
             </button>
           </div>
           <p>{report.summary}</p>
@@ -413,7 +441,9 @@ export default function ReportPanel({ report, question, runId }) {
       {report.sources?.length > 0 ? (
         <div className="sources-section" id="sourcesSection">
           <div className="sources-header-row">
-            <span className="eyebrow">Verified Sources ({report.sources.length})</span>
+            <span className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <ShieldCheck size={14} strokeWidth={2} /> Verified Sources ({report.sources.length})
+            </span>
           </div>
 
           <ul className="sources-list-enhanced">
@@ -452,7 +482,15 @@ export default function ReportPanel({ report, question, runId }) {
                         onClick={() => handleCopySourceUrl(url, i)}
                         title="Copy source URL"
                       >
-                        {copiedUrlIdx === i ? '✓ Copied' : '📋 Copy'}
+                        {copiedUrlIdx === i ? (
+                          <>
+                            <Check size={11} strokeWidth={2.2} className="icon-success-pop" /> Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={11} strokeWidth={1.75} /> Copy
+                          </>
+                        )}
                       </button>
 
                       <button
@@ -464,7 +502,7 @@ export default function ReportPanel({ report, question, runId }) {
                         }}
                         title="Jump back to report text"
                       >
-                        ↩ Back
+                        <ArrowUp size={11} strokeWidth={2} /> Top
                       </button>
                     </div>
                   </div>
@@ -477,7 +515,7 @@ export default function ReportPanel({ report, question, runId }) {
                     title={url}
                   >
                     <span>{url}</span>
-                    <span className="source-external-arrow">↗</span>
+                    <ExternalLink size={11} strokeWidth={2} className="source-external-icon" />
                   </a>
                 </li>
               )

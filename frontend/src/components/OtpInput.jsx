@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { Mail, Edit3, ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react'
 
 /**
  * OtpInput — Interactive 6-box numeric verification code component.
@@ -34,7 +35,6 @@ export function OtpInput({
 
   // ── Handle individual digit change ───────────────────────────
   const handleChange = (index, value) => {
-    // Only allow single numeric digit
     const cleanValue = value.replace(/\D/g, '').slice(-1)
 
     const nextDigits = [...digits]
@@ -109,7 +109,9 @@ export function OtpInput({
   return (
     <div className="otp-container animate-in">
       <div className="otp-header">
-        <div className="otp-icon-badge">📬</div>
+        <div className="otp-icon-badge">
+          <Mail size={28} strokeWidth={1.75} />
+        </div>
         <h3 className="otp-title">Verify your email</h3>
         <p className="otp-subtitle">
           We’ve sent a 6-digit verification code to
@@ -122,8 +124,9 @@ export function OtpInput({
               className="otp-edit-email-btn"
               onClick={onBack}
               title="Change email address"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}
             >
-              Edit
+              <Edit3 size={11} strokeWidth={2} /> Edit
             </button>
           )}
         </div>
@@ -131,7 +134,9 @@ export function OtpInput({
 
       {error && (
         <div className="auth-error" role="alert" style={{ marginBottom: 16 }}>
-          <span>⚠ {error}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <AlertCircle size={14} strokeWidth={2} /> {error}
+          </span>
         </div>
       )}
 
@@ -162,13 +167,17 @@ export function OtpInput({
         className="btn btn-primary otp-verify-btn"
         onClick={() => onVerify(digits.join(''))}
         disabled={!isComplete || loading}
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
       >
         {loading ? (
           <>
             <span className="btn-spinner" /> Verifying…
           </>
         ) : (
-          'Verify & Create Account →'
+          <>
+            <span>Verify & Create Account</span>
+            <ArrowRight size={14} strokeWidth={2} />
+          </>
         )}
       </button>
 
@@ -192,8 +201,13 @@ export function OtpInput({
       </div>
 
       {onBack && (
-        <button type="button" className="otp-back-btn" onClick={onBack}>
-          ← Back to details
+        <button
+          type="button"
+          className="otp-back-btn"
+          onClick={onBack}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+        >
+          <ArrowLeft size={12} strokeWidth={2} /> Back to details
         </button>
       )}
     </div>

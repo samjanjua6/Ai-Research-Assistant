@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { Sparkles, Square, RotateCcw, ArrowRight, AlertTriangle } from 'lucide-react'
 
 export default function QuestionForm({ onSubmit, onStop, isLoading, error, initialQuestion }) {
   const [value, setValue] = useState(initialQuestion || '')
@@ -49,7 +50,7 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
               type="button"
               title="Stop research agent"
             >
-              ⏹ Stop
+              <Square size={12} fill="currentColor" /> Stop
             </button>
           </div>
         ) : (
@@ -58,20 +59,24 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
             onClick={handleSubmit}
             disabled={!value.trim()}
           >
-            Run research →
+            <Sparkles size={14} strokeWidth={2} />
+            <span>Run research</span>
+            <ArrowRight size={14} strokeWidth={2} />
           </button>
         )}
       </div>
 
       {error && (
         <div className="error-banner">
-          <div className="error-text">⚠️ {error}</div>
+          <div className="error-text">
+            <AlertTriangle size={14} strokeWidth={2} className="inline-icon" /> {error}
+          </div>
           <button
             className="retry-btn-inline"
             onClick={handleRetry}
             disabled={isLoading || !value.trim()}
           >
-            🔄 Retry
+            <RotateCcw size={12} strokeWidth={2} /> Retry
           </button>
         </div>
       )}

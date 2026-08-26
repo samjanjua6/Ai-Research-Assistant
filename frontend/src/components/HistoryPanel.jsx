@@ -1,5 +1,14 @@
 import { useState, useMemo, useCallback } from 'react'
 import {
+  Search,
+  Zap,
+  Rocket,
+  Atom,
+  CheckCircle2,
+  AlertCircle,
+  X,
+} from 'lucide-react'
+import {
   NoRunsIllustration,
   NoMatchesIllustration,
   EmptyState,
@@ -110,7 +119,7 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun,
                 title="Clear search (Esc)"
                 aria-label="Clear search"
               >
-                ✕
+                <X size={12} strokeWidth={2} />
               </button>
             )}
           </div>
@@ -130,7 +139,7 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun,
                 className={`history-filter-pill ${statusFilter === 'done' ? 'active' : ''}`}
                 onClick={() => setStatusFilter('done')}
               >
-                ✓ Done ({doneCount})
+                <CheckCircle2 size={11} strokeWidth={2} /> Done ({doneCount})
               </button>
             )}
             {failedCount > 0 && (
@@ -139,7 +148,7 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun,
                 className={`history-filter-pill ${statusFilter === 'failed' ? 'active' : ''}`}
                 onClick={() => setStatusFilter('failed')}
               >
-                ⚠️ Failed ({failedCount})
+                <AlertCircle size={11} strokeWidth={2} /> Failed ({failedCount})
               </button>
             )}
           </div>
@@ -163,21 +172,21 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun,
                   className="sidebar-starter-chip"
                   onClick={() => onRetry('What are the latest breakthroughs and commercialization milestones for solid-state batteries in 2026?')}
                 >
-                  <span>⚡</span> Batteries
+                  <Zap size={11} strokeWidth={2} /> Batteries
                 </button>
                 <button
                   type="button"
                   className="sidebar-starter-chip"
                   onClick={() => onRetry('What is the current status and roadmap of private commercial fusion energy ventures?')}
                 >
-                  <span>🚀</span> Fusion
+                  <Rocket size={11} strokeWidth={2} /> Fusion
                 </button>
                 <button
                   type="button"
                   className="sidebar-starter-chip"
                   onClick={() => onRetry('What are the latest breakthroughs in fault-tolerant quantum computing architectures?')}
                 >
-                  <span>🔬</span> Quantum
+                  <Atom size={11} strokeWidth={2} /> Quantum
                 </button>
               </div>
             </div>

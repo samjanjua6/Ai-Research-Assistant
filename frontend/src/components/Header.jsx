@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Sparkles, Plus, LogOut, PanelLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { ThemeToggle } from './ThemeToggle'
@@ -11,7 +12,7 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
 
   const handleLogout = () => {
     logout()
-    toastInfo('You have been signed out.', { title: '👋 Signed Out' })
+    toastInfo('You have been signed out.', { title: 'Signed Out' })
   }
 
   // User initials badge from first + last name
@@ -36,15 +37,14 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
               title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
               aria-label="Toggle sidebar"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
-                <line x1="9" x2="9" y1="3" y2="21"/>
-              </svg>
+              <PanelLeft size={16} strokeWidth={1.75} />
             </button>
           )}
 
           <div className="topbar-brand">
-            <span className="topbar-mark">🔬</span>
+            <span className="topbar-mark">
+              <Sparkles size={15} strokeWidth={2.2} />
+            </span>
             Research Assistant
           </div>
 
@@ -55,7 +55,7 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
               onClick={onNewResearch}
               title="Start a new research query"
             >
-              <span>✨</span> New Research
+              <Plus size={13} strokeWidth={2} /> New Research
             </button>
           )}
         </div>
@@ -78,7 +78,8 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
                 onClick={handleLogout}
                 title="Sign out"
               >
-                Sign Out
+                <LogOut size={13} strokeWidth={1.75} />
+                <span>Sign Out</span>
               </button>
             </div>
           ) : (

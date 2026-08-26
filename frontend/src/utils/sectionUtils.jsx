@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import { Copy, Check, Link2 } from 'lucide-react'
 import { toast } from '../context/ToastContext'
 
 /**
@@ -152,7 +153,15 @@ export function SectionHeading({ level = 2, children, rawMarkdown, ...props }) {
           title="Copy this section's markdown"
           aria-label="Copy section markdown"
         >
-          {copiedSection ? '✓ Copied section' : '📋 Copy section'}
+          {copiedSection ? (
+            <>
+              <Check size={11} strokeWidth={2.2} className="icon-success-pop" /> Copied section
+            </>
+          ) : (
+            <>
+              <Copy size={11} strokeWidth={1.75} /> Copy section
+            </>
+          )}
         </button>
 
         <button
@@ -162,7 +171,15 @@ export function SectionHeading({ level = 2, children, rawMarkdown, ...props }) {
           title="Copy direct section link"
           aria-label="Copy direct section link"
         >
-          {copiedLink ? '✓ Link copied' : '🔗 Link'}
+          {copiedLink ? (
+            <>
+              <Check size={11} strokeWidth={2.2} className="icon-success-pop" /> Link copied
+            </>
+          ) : (
+            <>
+              <Link2 size={11} strokeWidth={1.75} /> Link
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -194,7 +211,15 @@ export function CodeBlock({ children, ...props }) {
         onClick={handleCopyCode}
         title="Copy code snippet"
       >
-        {copied ? '✓ Copied' : '📋 Copy code'}
+        {copied ? (
+          <>
+            <Check size={11} strokeWidth={2.2} className="icon-success-pop" /> Copied
+          </>
+        ) : (
+          <>
+            <Copy size={11} strokeWidth={1.75} /> Copy code
+          </>
+        )}
       </button>
       <pre ref={codeRef} {...props}>
         {children}
@@ -222,7 +247,7 @@ function extractCleanCellText(cellElement) {
 
   // Get raw text content and collapse any inner newlines and redundant spaces into a single space
   let text = clone.innerText || clone.textContent || ''
-  text = text.replace(/\r?\n+/g, ' ').replace(/\s+/g, ' ').trim()
+  text = text.replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim()
 
   // Escape markdown pipes
   return text.replace(/\|/g, '\\|')
@@ -231,32 +256,31 @@ function extractCleanCellText(cellElement) {
 /**
  * Converts HTML <table> DOM into a valid, beautifully formatted Markdown table with headers and separators.
  */
-function convertTableElementToMarkdown(tableEl) {
-  const trElements = Array.from(tableEl.querySelectorAll('tr'))
-  if (!trElements.length) return ''
+export function convertTableElementToMarkdown(tableEl) {
+  if (!tableEl) return ''
 
-  const rows = []
+  const rows = Array.from(tableEl.querySelectorAll('tr'))
+  if (!rows.length) return ''
 
-  trElements.forEach((tr, index) => {
-    const cellElements = Array.from(tr.querySelectorAll('th, td'))
-    if (!cellElements.length) return
+  const markdownRows = []
 
-    const cellsText = cellElements.map(extractCleanCellText)
-    // Filter out rows that have no real content or are stray pipes
-    if (cellsText.length === 0 || cellsText.every((c) => !c)) return
+  rows.forEach((row, rowIdx) => {
+    const cells = Array.from(row.querySelectorAll('th, td'))
+    if (!cells.length) return
 
-    const rowText = `| ${cellsText.join(' | ')} |`
-    rows.push(rowText)
+    const cellTexts = cells.map(extractCleanCellText)
+    const rowLine = `| ${cellTexts.join(' | ')} |`
 
-    // Append markdown delimiter separator row under the table header row
-    const isHeaderRow = tr.querySelector('th') !== null || index === 0
-    if (isHeaderRow && index === 0) {
-      const separator = `| ${cellsText.map(() => '---').join(' | ')} |`
-      rows.push(separator)
+    if (rowIdx === 0) {
+      markdownRows.push(rowLine)
+      const separatorLine = `| ${cellTexts.map(() => '---').join(' | ')} |`
+      markdownRows.push(separatorLine)
+    } else {
+      markdownRows.push(rowLine)
     }
   })
 
-  return rows.join('\n')
+  return markdownRows.join('\n')
 }
 
 /**
@@ -288,7 +312,15 @@ export function TableBlock({ children, ...props }) {
           onClick={handleCopyTable}
           title="Copy table as valid Markdown"
         >
-          {copied ? '✓ Copied table' : '📋 Copy table'}
+          {copied ? (
+            <>
+              <Check size={11} strokeWidth={2.2} className="icon-success-pop" /> Copied table
+            </>
+          ) : (
+            <>
+              <Copy size={11} strokeWidth={1.75} /> Copy table
+            </>
+          )}
         </button>
       </div>
       <div className="table-scroll-wrapper" ref={tableRef}>

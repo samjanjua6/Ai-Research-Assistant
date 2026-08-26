@@ -1,12 +1,8 @@
+import { Square, RotateCcw, Clock, Link2, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react'
+
 /**
  * RunHeader — shows the current run's question, status pill, stats,
  * and a 5-segment progress bar (one segment per graph node).
- *
- * Props:
- *   question: string
- *   phase: 'streaming' | 'done' | 'error'
- *   steps: StepEvent[]
- *   report: { sources: [] } | null
  */
 
 const NODE_ORDER = ['plan_steps', 'search_web', 'draft_report', 'review_draft', 'finalize_report']
@@ -39,12 +35,12 @@ export default function RunHeader({ question, phase, steps, report, onStop, onRe
         <div className="run-header-actions">
           {phase === 'streaming' && onStop && (
             <button className="stop-btn-compact" onClick={onStop} title="Stop research agent">
-              ⏹ Stop
+              <Square size={12} fill="currentColor" /> Stop
             </button>
           )}
           {phase === 'error' && onRetry && (
-            <button className="retry-btn-compact" onClick={() => onRetry(question)} title="Retry research">
-              🔄 Retry
+            <button className="retry-btn-compact icon-btn-spin-on-hover" onClick={() => onRetry(question)} title="Retry research">
+              <RotateCcw size={13} strokeWidth={2} /> Retry
             </button>
           )}
         </div>
@@ -52,7 +48,9 @@ export default function RunHeader({ question, phase, steps, report, onStop, onRe
 
       <div className="meta-row">
         {phase === 'done' && (
-          <span className="status-pill status-pill-done">● Done</span>
+          <span className="status-pill status-pill-done">
+            <CheckCircle2 size={12} strokeWidth={2.2} /> Done
+          </span>
         )}
         {phase === 'streaming' && (
           <span className="status-pill status-pill-running">
@@ -61,17 +59,25 @@ export default function RunHeader({ question, phase, steps, report, onStop, onRe
           </span>
         )}
         {phase === 'error' && (
-          <span className="status-pill status-pill-failed">✕ Failed</span>
+          <span className="status-pill status-pill-failed">
+            <AlertCircle size={12} strokeWidth={2.2} /> Failed
+          </span>
         )}
 
         {elapsed && (
-          <span className="stat">⏱ <b>{elapsed}</b></span>
+          <span className="stat">
+            <Clock size={12} strokeWidth={2} /> <b>{elapsed}</b>
+          </span>
         )}
         {sourcesCount > 0 && (
-          <span className="stat">🔗 <b>{sourcesCount}</b> sources</span>
+          <span className="stat">
+            <Link2 size={12} strokeWidth={2} /> <b>{sourcesCount}</b> sources
+          </span>
         )}
         {loopCount > 0 && (
-          <span className="stat">🔁 <b>{loopCount}</b> refinement loop{loopCount !== 1 ? 's' : ''}</span>
+          <span className="stat">
+            <RefreshCw size={12} strokeWidth={2} /> <b>{loopCount}</b> refinement loop{loopCount !== 1 ? 's' : ''}
+          </span>
         )}
       </div>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 
 function ToastCard({ toast, onDismiss }) {
@@ -70,29 +71,19 @@ function ToastCard({ toast, onDismiss }) {
       case 'success':
         return (
           <span className="toast-icon toast-icon-success">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            <CheckCircle2 size={16} strokeWidth={2.2} />
           </span>
         )
       case 'error':
         return (
           <span className="toast-icon toast-icon-error">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </svg>
+            <AlertCircle size={16} strokeWidth={2.2} />
           </span>
         )
       case 'warning':
         return (
           <span className="toast-icon toast-icon-warning">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
+            <AlertTriangle size={16} strokeWidth={2.2} />
           </span>
         )
       case 'loading':
@@ -104,11 +95,7 @@ function ToastCard({ toast, onDismiss }) {
       default:
         return (
           <span className="toast-icon toast-icon-info">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
+            <Info size={16} strokeWidth={2.2} />
           </span>
         )
     }
@@ -165,7 +152,7 @@ function ToastCard({ toast, onDismiss }) {
           onClick={() => onDismiss(toast.id)}
           aria-label="Dismiss notification"
         >
-          ×
+          <X size={14} strokeWidth={2} />
         </button>
       </div>
 

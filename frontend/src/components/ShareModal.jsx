@@ -1,4 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
+import {
+  Globe,
+  Lock,
+  Copy,
+  Check,
+  Share2,
+  ExternalLink,
+  Eye,
+  X,
+  AlertCircle,
+} from 'lucide-react'
 import { shareRun } from '../api/client'
 import { toast } from '../context/ToastContext'
 
@@ -41,7 +52,7 @@ export function ShareModal({ runId, question, onClose }) {
     if (!fullShareUrl) return
     navigator.clipboard.writeText(fullShareUrl).then(() => {
       setCopied(true)
-      toast.success('Public report link copied to clipboard!', { title: '🔗 Link Copied' })
+      toast.success('Public report link copied to clipboard!', { title: 'Link Copied' })
       setTimeout(() => setCopied(false), 2000)
     })
   }, [fullShareUrl])
@@ -64,11 +75,11 @@ export function ShareModal({ runId, question, onClose }) {
       const data = await shareRun(runId, nextState)
       setIsPublic(data.is_public)
       toast.info(nextState ? 'Public link is active.' : 'Public link has been disabled.', {
-        title: nextState ? '🌐 Public Sharing Enabled' : '🔒 Private Mode Active',
+        title: nextState ? 'Public Sharing Enabled' : 'Private Mode Active',
       })
     } catch {
       setIsPublic(!nextState)
-      toast.error('Failed to update sharing settings', { title: '❌ Error' })
+      toast.error('Failed to update sharing settings', { title: 'Error' })
     }
   }
 
@@ -95,12 +106,16 @@ export function ShareModal({ runId, question, onClose }) {
             onClick={onClose}
             aria-label="Close modal"
           >
-            ✕
+            <X size={16} strokeWidth={2} />
           </button>
         </div>
 
         <div className="share-modal-body">
-          {error && <div className="auth-error">{error}</div>}
+          {error && (
+            <div className="auth-error">
+              <AlertCircle size={14} strokeWidth={2} /> {error}
+            </div>
+          )}
 
           {loading ? (
             <div className="share-loading">
@@ -112,7 +127,17 @@ export function ShareModal({ runId, question, onClose }) {
               {/* Toggle Public Sharing */}
               <div className="share-toggle-row">
                 <div className="share-toggle-info">
-                  <span className="share-toggle-title">Public Sharing</span>
+                  <span className="share-toggle-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {isPublic ? (
+                      <>
+                        <Globe size={14} strokeWidth={2} className="text-emerald" /> Public Sharing
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={14} strokeWidth={2} className="text-amber" /> Private Only
+                      </>
+                    )}
+                  </span>
                   <span className="share-toggle-desc">
                     {isPublic
                       ? 'Link is active and accessible to anyone.'
@@ -145,7 +170,15 @@ export function ShareModal({ runId, question, onClose }) {
                       className="btn btn-primary share-copy-btn"
                       onClick={handleCopy}
                     >
-                      {copied ? '✓ Copied!' : '📋 Copy'}
+                      {copied ? (
+                        <>
+                          <Check size={13} strokeWidth={2.2} className="icon-success-pop" /> Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={13} strokeWidth={1.75} /> Copy
+                        </>
+                      )}
                     </button>
                   </div>
 
@@ -155,7 +188,7 @@ export function ShareModal({ runId, question, onClose }) {
                         className="btn btn-ghost btn-sm"
                         onClick={handleNativeShare}
                       >
-                        📤 Share via Apps…
+                        <Share2 size={13} strokeWidth={1.75} /> Share via Apps…
                       </button>
                     )}
                     <a
@@ -164,11 +197,11 @@ export function ShareModal({ runId, question, onClose }) {
                       rel="noopener noreferrer"
                       className="btn btn-ghost btn-sm"
                     >
-                      👁 Open Public View ↗
+                      <ExternalLink size={13} strokeWidth={1.75} /> Open Public View
                     </a>
                     {viewsCount > 0 && (
                       <span className="share-views-badge">
-                        👁 {viewsCount} {viewsCount === 1 ? 'view' : 'views'}
+                        <Eye size={12} strokeWidth={2} /> {viewsCount} {viewsCount === 1 ? 'view' : 'views'}
                       </span>
                     )}
                   </div>
