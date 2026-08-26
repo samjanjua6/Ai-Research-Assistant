@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     smtp_user: str = "b341a8001@smtp-brevo.com"
     smtp_password: str = ""
     brevo_api_key: str = ""
-    brevo_sender_email: str = "samjanjua6@gmail.com"
+    brevo_sender_email: str = "support@mychatbot.codes"
     brevo_sender_name: str = "AI Research Assistant"
     otp_expire_minutes: int = 10
     otp_resend_cooldown_seconds: int = 60
