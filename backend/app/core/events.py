@@ -28,18 +28,21 @@ def unsubscribe(run_id: str, queue: asyncio.Queue) -> None:
             RUN_SUBSCRIBERS.pop(run_id, None)
 
 
-def publish_event(run_id: str, event_type: str, data: dict[str, Any]) -> None:
+def publish_event(run_id: str, event_type: str = "", data: dict[str, Any] | None = None, **kwargs: Any) -> None:
     """
     Broadcast an event to all active subscriber queues for a run.
     event_type can be 'token', 'step', 'done', or 'ping'.
     """
+    event_name = event_type or kwargs.get("event") or "event"
+    payload_data = data if data is not None else kwargs.get("data", {})
+
     subscribers = RUN_SUBSCRIBERS.get(run_id)
     if not subscribers:
         return
 
     payload = {
-        "event": event_type,
-        "data": json.dumps(data) if isinstance(data, dict) else str(data),
+        "event": event_name,
+        "data": json.dumps(payload_data) if isinstance(payload_data, dict) else str(payload_data),
     }
 
     for queue in list(subscribers):

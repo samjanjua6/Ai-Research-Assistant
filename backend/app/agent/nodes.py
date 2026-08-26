@@ -235,10 +235,10 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
         token = str(chunk.content or "")
         if token:
             chunks.append(token)
-            await publish_event(
-                run_id=run_id_str,
-                event="token",
-                data={
+            publish_event(
+                run_id_str,
+                "token",
+                {
                     "run_id": run_id_str,
                     "node": "draft_report",
                     "loop": loop_idx,
