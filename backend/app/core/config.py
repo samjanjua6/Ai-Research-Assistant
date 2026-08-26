@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 10080   # 7 days
 
     # ── Brevo Email / OTP ─────────────────────────────────────────
+    smtp_host: str = "smtp-relay.brevo.com"
+    smtp_port: int = 587
+    smtp_user: str = "b341a8001@smtp-brevo.com"
+    smtp_password: str = ""
     brevo_api_key: str = ""
     brevo_sender_email: str = "samjanjua6@gmail.com"
     brevo_sender_name: str = "AI Research Assistant"

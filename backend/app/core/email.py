@@ -1,10 +1,14 @@
 """
-Email dispatching service using Brevo (Sendinblue) REST API.
+Email dispatching service using Brevo (Sendinblue) SMTP Relay and REST API.
 """
 from __future__ import annotations
 
+import asyncio
+from email.message import EmailMessage
 import secrets
+import smtplib
 import httpx
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
@@ -77,61 +81,91 @@ def _build_otp_html(otp_code: str, user_name: str, purpose: str, expire_minutes:
     """
 
 
+def _send_smtp_sync(to_email: str, subject: str, html_content: str, text_content: str) -> bool:
+    settings = get_settings()
+    smtp_password = settings.smtp_password.strip() or settings.brevo_api_key.strip()
+    if not smtp_password:
+        return False
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = f"{settings.brevo_sender_name} <{settings.brevo_sender_email}>"
+    msg["To"] = to_email.strip().lower()
+    msg.set_content(text_content)
+    msg.add_alternative(html_content, subtype="html")
+
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=12) as server:
+        server.starttls()
+        server.login(settings.smtp_user, smtp_password)
+        server.send_message(msg)
+    return True
+
+
 async def send_brevo_otp(to_email: str, otp_code: str, user_name: str = "there", purpose: str = "signup") -> bool:
     """
-    Sends an OTP verification email using Brevo's Transactional Email API.
+    Sends an OTP verification email using Brevo SMTP Relay (or REST API fallback).
     """
     settings = get_settings()
-    api_key = settings.brevo_api_key.strip()
+    smtp_password = settings.smtp_password.strip() or settings.brevo_api_key.strip()
 
-    if not api_key:
+    if not smtp_password:
         logger.warning(
-            "brevo_api_key_missing",
+            "email_credentials_missing",
             email=to_email,
             otp=otp_code,
-            msg="Brevo API key not set — logging OTP for development.",
+            msg="Brevo SMTP/API key not set — logging OTP for development.",
         )
         return True
 
-    url = "https://api.brevo.com/v3/smtp/email"
-    headers = {
-        "accept": "application/json",
-        "api-key": api_key,
-        "content-type": "application/json",
-    }
-
     subject = f"{otp_code} is your Research Assistant verification code"
     html_content = _build_otp_html(otp_code, user_name, purpose, settings.otp_expire_minutes)
+    text_content = f"Hi {user_name},\n\nYour 6-digit verification code is: {otp_code}\n\nThis code expires in {settings.otp_expire_minutes} minutes."
 
-    payload = {
-        "sender": {
-            "name": settings.brevo_sender_name,
-            "email": settings.brevo_sender_email,
-        },
-        "to": [
-            {
-                "email": to_email.strip().lower(),
-                "name": user_name,
-            }
-        ],
-        "subject": subject,
-        "htmlContent": html_content,
-    }
-
+    # 1. Try Brevo SMTP Relay
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            if response.status_code in (200, 201, 202):
-                logger.info("brevo_email_sent_successfully", email=to_email, status=response.status_code)
-                return True
-            else:
-                logger.error(
-                    "brevo_email_failed",
-                    email=to_email,
-                    status=response.status_code,
-                    response=response.text,
-                )
-                return False
-    except Exception as exc:
-        logger.error("brevo_email_exception", email=to_email, error=str(exc))
-        return False
+        await asyncio.to_thread(_send_smtp_sync, to_email, subject, html_content, text_content)
+        logger.info("brevo_smtp_email_sent_successfully", email=to_email)
+        return True
+    except Exception as smtp_err:
+        logger.warning("brevo_smtp_failed_trying_rest", email=to_email, error=str(smtp_err))
+
+    # 2. Try Brevo REST API fallback if API key is present
+    if settings.brevo_api_key.strip():
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "accept": "application/json",
+            "api-key": settings.brevo_api_key.strip(),
+            "content-type": "application/json",
+        }
+        payload = {
+            "sender": {
+                "name": settings.brevo_sender_name,
+                "email": settings.brevo_sender_email,
+            },
+            "to": [
+                {
+                    "email": to_email.strip().lower(),
+                    "name": user_name,
+                }
+            ],
+            "subject": subject,
+            "htmlContent": html_content,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(url, headers=headers, json=payload)
+                if response.status_code in (200, 201, 202):
+                    logger.info("brevo_rest_email_sent_successfully", email=to_email, status=response.status_code)
+                    return True
+                else:
+                    logger.error(
+                        "brevo_rest_email_failed",
+                        email=to_email,
+                        status=response.status_code,
+                        response=response.text,
+                    )
+        except Exception as exc:
+            logger.error("brevo_rest_email_exception", email=to_email, error=str(exc))
+
+    return False
