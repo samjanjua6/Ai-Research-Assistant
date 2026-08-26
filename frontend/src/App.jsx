@@ -358,6 +358,18 @@ export default function App() {
               report={report}
               question={activeQuestion}
               runId={currentRunId}
+              onSelectQuestion={(qText, autoSubmit) => {
+                setFormQuestion(qText)
+                if (autoSubmit) {
+                  handleSubmit(qText)
+                } else {
+                  const input = document.querySelector('.question-input')
+                  if (input) {
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    input.focus()
+                  }
+                }
+              }}
             />
           )}
 

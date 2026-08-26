@@ -41,3 +41,4 @@ class GraphState(TypedDict):
     final_report: str
     summary: str
     sources: list[str]
+    follow_up_questions: list[dict]

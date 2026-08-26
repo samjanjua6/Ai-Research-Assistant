@@ -22,6 +22,8 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  Compass,
+  ArrowRight,
 } from 'lucide-react'
 import {
   SectionHeading,
@@ -201,13 +203,23 @@ tr:nth-child(even) td { background: #f9f8fe; }
 </html>`
 }
 
-export default function ReportPanel({ report, question, runId }) {
+export default function ReportPanel({ report, question, runId, onSelectQuestion }) {
   const [copied, setCopied] = useState(false)
   const [copiedSummary, setCopiedSummary] = useState(false)
   const [copiedUrlIdx, setCopiedUrlIdx] = useState(null)
+  const [copiedFollowUpIdx, setCopiedFollowUpIdx] = useState(null)
   const [expandedExcerptIdx, setExpandedExcerptIdx] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [showShare, setShowShare] = useState(false)
+
+  const handleCopyFollowUp = useCallback((qText, idx) => {
+    if (!qText) return
+    navigator.clipboard.writeText(qText).then(() => {
+      setCopiedFollowUpIdx(idx)
+      toast.success('Investigation question copied!')
+      setTimeout(() => setCopiedFollowUpIdx(null), 2000)
+    })
+  }, [])
 
   const normalizedReport = useMemo(() => {
     return normalizeMarkdown(report?.final_report || '')
@@ -650,6 +662,183 @@ export default function ReportPanel({ report, question, runId }) {
         <div className="sources-section-empty">
           <NoSourcesIllustration size={50} />
           <span>No external web citations were required for this synthesis report.</span>
+        </div>
+      )}
+
+      {/* ── Suggested Follow-Up Questions (Explore Next) ── */}
+      {report?.follow_up_questions && report.follow_up_questions.length > 0 && (
+        <div className="follow-up-section" style={{ marginTop: 28, paddingTop: 22, borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  backgroundColor: 'rgba(124, 106, 240, 0.15)',
+                  color: 'var(--violet)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Compass size={17} strokeWidth={2.2} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text)' }}>
+                  Explore Next Investigations
+                </h3>
+                <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
+                  AI-suggested research pathways based on these findings
+                </span>
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 9px',
+                borderRadius: 12,
+                backgroundColor: 'var(--panel-alt)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-dim)',
+              }}
+            >
+              {report.follow_up_questions.length} Directions
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
+            {report.follow_up_questions.map((fq, fIdx) => {
+              const qText = typeof fq === 'string' ? fq : (fq?.question || '')
+              const category = typeof fq === 'object' && fq?.category ? fq.category : 'Deep Dive'
+              const rationale = typeof fq === 'object' && fq?.rationale ? fq.rationale : ''
+
+              const getCategoryStyle = (cat) => {
+                const lower = (cat || '').toLowerCase()
+                if (lower.includes('compar')) {
+                  return { bg: 'rgba(6, 182, 212, 0.12)', color: '#06b6d4', border: 'rgba(6, 182, 212, 0.28)' }
+                }
+                if (lower.includes('implement') || lower.includes('practic')) {
+                  return { bg: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: 'rgba(16, 185, 129, 0.28)' }
+                }
+                if (lower.includes('future') || lower.includes('outlook')) {
+                  return { bg: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.28)' }
+                }
+                return { bg: 'rgba(124, 106, 240, 0.12)', color: 'var(--violet)', border: 'rgba(124, 106, 240, 0.28)' }
+              }
+
+              const catStyle = getCategoryStyle(category)
+              const isCopied = copiedFollowUpIdx === fIdx
+
+              return (
+                <div
+                  key={fIdx}
+                  className="follow-up-card"
+                  style={{
+                    padding: '16px',
+                    backgroundColor: 'var(--panel)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span
+                        style={{
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          backgroundColor: catStyle.bg,
+                          color: catStyle.color,
+                          border: `1px solid ${catStyle.border}`,
+                          letterSpacing: '0.2px',
+                        }}
+                      >
+                        {category}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyFollowUp(qText, fIdx)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: isCopied ? '#10b981' : 'var(--text-faint)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: '11px',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                        }}
+                        title="Copy question to clipboard"
+                      >
+                        {isCopied ? <Check size={12} strokeWidth={2.2} /> : <Copy size={12} strokeWidth={1.8} />}
+                        <span>{isCopied ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+
+                    <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 600, color: 'var(--text)', lineHeight: 1.45 }}>
+                      {qText}
+                    </p>
+
+                    {rationale && (
+                      <span style={{ fontSize: '12px', color: 'var(--text-dim)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                        {rationale}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
+                    {onSelectQuestion && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={() => onSelectQuestion(qText, true)}
+                          style={{
+                            fontSize: '12.5px',
+                            padding: '7px 14px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            borderRadius: 6,
+                            flex: 1,
+                            justifyContent: 'center',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>Research This</span>
+                          <ArrowRight size={13} strokeWidth={2.2} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => onSelectQuestion(qText, false)}
+                          style={{
+                            fontSize: '12.5px',
+                            padding: '7px 12px',
+                            borderRadius: 6,
+                          }}
+                          title="Pre-fill search box to edit before running"
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

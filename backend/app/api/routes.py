@@ -82,7 +82,8 @@ class RunDetailResponse(BaseModel):
     status: str
     final_report: str | None
     summary: str | None
-    sources: list[str] | None
+    sources: list[Any] | None = None
+    follow_up_questions: list[Any] | None = None
     loop_count: int
     share_token: str | None = None
     is_public: bool = False
@@ -113,7 +114,8 @@ class PublicReportResponse(BaseModel):
     status: str
     final_report: str | None
     summary: str | None
-    sources: list[str] | None
+    sources: list[Any] | None = None
+    follow_up_questions: list[Any] | None = None
     loop_count: int
     created_at: str
     views_count: int = 0
@@ -234,6 +236,7 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
     final_report_text = accumulated.get("final_report", "")
     summary_text = accumulated.get("summary", "")
     sources_list = accumulated.get("sources", [])
+    follow_up_questions_list = accumulated.get("follow_up_questions", [])
     loop_count_num = accumulated.get("loop_count", 0)
 
     async with AsyncSessionLocal() as db:
@@ -244,6 +247,7 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
             final_report=final_report_text,
             summary=summary_text,
             sources=sources_list,
+            follow_up_questions=follow_up_questions_list,
             loop_count=loop_count_num,
         )
 
@@ -256,6 +260,7 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
             "summary": summary_text,
             "final_report": final_report_text,
             "sources": sources_list,
+            "follow_up_questions": follow_up_questions_list,
         },
     )
     logger.info("graph_run_complete", run_id=str(run_id))
@@ -471,6 +476,7 @@ async def stream_research_run(
                                 "summary": check_run.summary,
                                 "final_report": check_run.final_report,
                                 "sources": check_run.sources or [],
+                                "follow_up_questions": check_run.follow_up_questions or [],
                             }),
                         }
                         break
@@ -541,6 +547,7 @@ async def get_public_report(
         final_report=run.final_report,
         summary=run.summary,
         sources=run.sources or [],
+        follow_up_questions=run.follow_up_questions or [],
         loop_count=run.loop_count,
         created_at=run.created_at.isoformat(),
         views_count=run.views_count or 0,

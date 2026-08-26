@@ -99,6 +99,7 @@ async def get_user_export_data(db: AsyncSession, user: User) -> dict[str, Any]:
                 "summary": r.summary,
                 "final_report": r.final_report,
                 "sources": r.sources,
+                "follow_up_questions": r.follow_up_questions,
                 "loop_count": r.loop_count,
                 "is_public": r.is_public,
                 "share_token": r.share_token,
@@ -251,6 +252,7 @@ async def update_run_status(
     final_report: str | None = None,
     summary: str | None = None,
     sources: list[str] | None = None,
+    follow_up_questions: list[Any] | None = None,
     loop_count: int | None = None,
 ) -> ResearchRun | None:
     run = await get_run(db, run_id)
@@ -263,6 +265,8 @@ async def update_run_status(
         run.summary = summary
     if sources is not None:
         run.sources = sources
+    if follow_up_questions is not None:
+        run.follow_up_questions = follow_up_questions
     if loop_count is not None:
         run.loop_count = loop_count
     if status in (RunStatus.done, RunStatus.failed):

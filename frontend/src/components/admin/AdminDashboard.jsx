@@ -1222,6 +1222,49 @@ export function AdminDashboard({ onBackToApp }) {
                       </ul>
                     </div>
                   )}
+
+                  {/* Follow-Up Investigations */}
+                  {inspectedRun.follow_up_questions && inspectedRun.follow_up_questions.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 10px', color: 'var(--text)' }}>
+                        Suggested Follow-Up Investigations ({inspectedRun.follow_up_questions.length})
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {inspectedRun.follow_up_questions.map((fq, fIdx) => {
+                          const qText = typeof fq === 'string' ? fq : fq?.question || ''
+                          const cat = typeof fq === 'object' && fq?.category ? fq.category : 'Deep Dive'
+                          const rat = typeof fq === 'object' && fq?.rationale ? fq.rationale : ''
+                          return (
+                            <div
+                              key={fIdx}
+                              style={{
+                                padding: '10px 14px',
+                                backgroundColor: 'var(--panel)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 8,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 4,
+                                fontSize: '12.5px',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: 4, backgroundColor: 'rgba(124, 106, 240, 0.12)', color: 'var(--violet)' }}>
+                                  {cat}
+                                </span>
+                                <span style={{ color: 'var(--text)', fontWeight: 600, flex: 1 }}>{qText}</span>
+                              </div>
+                              {rat && (
+                                <span style={{ fontSize: '11.5px', color: 'var(--text-dim)', fontStyle: 'italic', paddingLeft: 2 }}>
+                                  {rat}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : null}
             </div>

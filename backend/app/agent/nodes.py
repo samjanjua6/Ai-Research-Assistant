@@ -311,22 +311,50 @@ async def review_draft(state: GraphState) -> dict[str, Any]:
 # Node 5 — finalize_report
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _generate_fallback_follow_ups(question: str) -> list[dict[str, Any]]:
+    clean_q = question.rstrip("?").strip()
+    return [
+        {
+            "question": f"What are the emerging breakthrough technologies that could disrupt {clean_q} by 2028?",
+            "category": "Future Outlook",
+            "rationale": "Forecasts next-generation innovations and long-term industry trajectories.",
+        },
+        {
+            "question": f"How do the cost, scalability, and performance benchmarks of {clean_q} compare with leading alternatives?",
+            "category": "Comparative Analysis",
+            "rationale": "Evaluates economic competitiveness and architectural trade-offs.",
+        },
+        {
+            "question": f"What are the primary regulatory, safety, and supply chain bottlenecks in deploying {clean_q} at scale?",
+            "category": "Practical Implementation",
+            "rationale": "Examines real-world adoption barriers and commercialization hurdles.",
+        },
+    ]
+
+
 async def finalize_report(state: GraphState) -> dict[str, Any]:
     """
-    Polish the draft into a final report with a one-paragraph summary and
-    a ranked, enriched sources list.
+    Polish the draft into a final report with a one-paragraph summary,
+    a ranked enriched sources list, and 3-5 categorized follow-up research questions.
     """
     logger.info("node:finalize_report", run_id=state["run_id"])
     llm = _get_llm()
 
     system = (
-        "You are a professional research writer. "
-        "Given the draft report, produce a final polished version. "
-        "Preserve and refine any markdown tables, ensuring each table row is on a separate line with standard markdown format. "
-        "Then write a 2-3 sentence executive summary that captures the key findings. "
-        "Return a JSON object with two keys:\n"
+        "You are a professional research analyst and strategist. "
+        "Given the draft report, perform three tasks:\n"
+        "1. Produce a final polished version of the report in clear markdown. "
+        "Preserve and refine any markdown tables, ensuring each table row is on a separate line with standard markdown format.\n"
+        "2. Write a 2-3 sentence executive summary that captures the key findings.\n"
+        "3. Generate 3 to 5 high-impact, insightful follow-up research questions that explore deeper technical mechanisms, comparative trade-offs, practical scale-up challenges, or 3-5 year future outlooks.\n"
+        "For each follow-up question, provide:\n"
+        '  - "question": the specific, standalone research question\n'
+        '  - "category": one of "Deep Dive", "Comparative Analysis", "Practical Implementation", "Future Outlook"\n'
+        '  - "rationale": one sentence explaining why exploring this question adds strategic value\n\n'
+        "Return a JSON object with three keys:\n"
         '  "report": the full polished report (markdown)\n'
         '  "summary": the executive summary\n'
+        '  "follow_up_questions": list of objects [{ "question": "...", "category": "...", "rationale": "..." }]\n'
         "Return ONLY valid JSON, no markdown fences."
     )
     human = (
@@ -343,14 +371,34 @@ async def finalize_report(state: GraphState) -> dict[str, Any]:
             raw = raw[4:]
     raw = raw.strip()
 
+    follow_up_questions: list[dict[str, Any]] = []
     try:
         final: dict = json.loads(raw)
         report = clean_markdown_tables(str(final.get("report", state["draft"])))
         summary = str(final.get("summary", ""))
+        raw_follow_ups = final.get("follow_up_questions", [])
+
+        if isinstance(raw_follow_ups, list):
+            for item in raw_follow_ups:
+                if isinstance(item, dict) and item.get("question"):
+                    follow_up_questions.append({
+                        "question": str(item["question"]).strip(),
+                        "category": str(item.get("category", "Deep Dive")).strip(),
+                        "rationale": str(item.get("rationale", "")).strip(),
+                    })
+                elif isinstance(item, str) and item.strip():
+                    follow_up_questions.append({
+                        "question": item.strip(),
+                        "category": "Deep Dive",
+                        "rationale": "Suggested continuation based on research findings.",
+                    })
     except Exception as exc:
         logger.warning("finalize_parse_error", error=str(exc))
         report = clean_markdown_tables(state["draft"])
         summary = ""
+
+    if not follow_up_questions or len(follow_up_questions) < 2:
+        follow_up_questions = _generate_fallback_follow_ups(state["question"])
 
     # Deduplicate sources while preserving enriched scoring attributes
     seen_urls: set[str] = set()
@@ -378,5 +426,14 @@ async def finalize_report(state: GraphState) -> dict[str, Any]:
             "step": r.get("step", ""),
         })
 
-    logger.info("finalize_report_done", sources=len(enriched_sources))
-    return {"final_report": report, "summary": summary, "sources": enriched_sources}
+    logger.info(
+        "finalize_report_done",
+        sources=len(enriched_sources),
+        follow_up_questions=len(follow_up_questions),
+    )
+    return {
+        "final_report": report,
+        "summary": summary,
+        "sources": enriched_sources,
+        "follow_up_questions": follow_up_questions,
+    }
