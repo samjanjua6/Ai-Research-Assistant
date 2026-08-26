@@ -1,5 +1,6 @@
 """
 Email dispatching service using Brevo (Sendinblue) SMTP Relay and REST API.
+Supports signup verification, 1-click magic password reset, and security alerts.
 """
 from __future__ import annotations
 
@@ -7,6 +8,7 @@ import asyncio
 from email.message import EmailMessage
 import secrets
 import smtplib
+import urllib.parse
 import httpx
 
 from app.core.config import get_settings
@@ -20,23 +22,56 @@ def generate_otp() -> str:
     return f"{secrets.randbelow(900000) + 100000}"
 
 
-def _build_otp_html(otp_code: str, user_name: str, purpose: str, expire_minutes: int) -> str:
-    action_text = "verify your email address and create your account" if purpose == "signup" else "verify your account"
+def _build_otp_html(otp_code: str, user_name: str, purpose: str, expire_minutes: int, to_email: str) -> str:
+    is_reset = purpose == "password_reset"
+    title = "Reset Your Password" if is_reset else "Verify Your Email"
+    heading = "Password Reset Request" if is_reset else "Verification Code"
+    action_text = "reset your account password" if is_reset else "verify your email address and create your account"
+    encoded_email = urllib.parse.quote(to_email)
+    magic_url = f"https://research.mychatbot.codes/?reset_email={encoded_email}&reset_code={otp_code}"
+
+    magic_button_html = f"""
+    <div style="margin: 24px 0 16px; text-align: center;">
+      <a href="{magic_url}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #7C6AF0, #06B6D4); color: #ffffff; text-decoration: none; font-size: 14.5px; font-weight: 700; padding: 13px 32px; border-radius: 8px; box-shadow: 0 4px 14px rgba(124, 106, 240, 0.4);">
+        Reset Password Directly &rarr;
+      </a>
+      <p style="margin: 8px 0 0; font-size: 12px; color: #64748b;">
+        Or enter the 6-digit code below manually:
+      </p>
+    </div>
+    """ if is_reset else ""
+
+    security_notice = (
+        "If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged."
+        if is_reset
+        else "If you didn't request this verification code, you can safely ignore this email."
+    )
+
     return f"""
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Email Verification Code</title>
+      <title>{title}</title>
     </head>
     <body style="margin: 0; padding: 30px 15px; background-color: #0c0d12; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f1f5f9;">
       <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; background-color: #161822; border-radius: 14px; border: 1px solid #282b3d; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);">
         <!-- Header -->
         <tr>
           <td style="padding: 28px 32px 20px; border-bottom: 1px solid #282b3d; text-align: left;">
-            <span style="font-size: 22px; vertical-align: middle;">🔬</span>
-            <span style="font-size: 18px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; margin-left: 8px; vertical-align: middle;">AI Research Assistant</span>
+            <table border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align: middle;">
+                  <div style="width: 28px; height: 28px; background: linear-gradient(135deg, #7C6AF0, #06B6D4); border-radius: 7px; text-align: center; line-height: 28px; color: #ffffff; font-weight: bold; font-size: 14px;">
+                    &loz;
+                  </div>
+                </td>
+                <td style="vertical-align: middle; padding-left: 10px;">
+                  <span style="font-size: 17px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">AI Research Assistant</span>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
         
@@ -44,25 +79,82 @@ def _build_otp_html(otp_code: str, user_name: str, purpose: str, expire_minutes:
         <tr>
           <td style="padding: 32px 32px 24px;">
             <h1 style="margin: 0 0 14px; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">
-              Verification Code
+              {heading}
             </h1>
-            <p style="margin: 0 0 20px; font-size: 14.5px; line-height: 1.6; color: #94a3b8;">
+            <p style="margin: 0 0 18px; font-size: 14.5px; line-height: 1.6; color: #94a3b8;">
               Hi <strong style="color: #f1f5f9;">{user_name}</strong>,<br>
-              Please enter the 6-digit verification code below to {action_text}:
+              We received a request to {action_text}.
             </p>
 
+            {magic_button_html}
+
             <!-- OTP Highlight Card -->
-            <div style="margin: 28px 0; padding: 20px; background-color: #1e1b4b; border: 1px dashed #7c3aed; border-radius: 10px; text-align: center;">
+            <div style="margin: 20px 0; padding: 18px; background-color: #1a1738; border: 1px dashed #7c3aed; border-radius: 10px; text-align: center;">
               <span style="display: inline-block; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #c4b5fd;">
                 {otp_code}
               </span>
             </div>
 
             <p style="margin: 0 0 8px; font-size: 13px; color: #94a3b8; line-height: 1.5;">
-              ⏱️ This code will expire in <strong style="color: #cbd5e1;">{expire_minutes} minutes</strong>.
+              This code is valid for <strong style="color: #cbd5e1;">{expire_minutes} minutes</strong>.
             </p>
             <p style="margin: 0; font-size: 12.5px; color: #64748b; line-height: 1.5;">
-              If you didn't request this verification code, you can safely ignore this email.
+              {security_notice}
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 20px 32px; background-color: #11131c; border-top: 1px solid #282b3d; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #64748b;">
+              Autonomous Deep Research Assistant &nbsp;·&nbsp; <a href="https://research.mychatbot.codes" style="color: #7c3aed; text-decoration: none;">research.mychatbot.codes</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """
+
+
+def _build_password_changed_alert_html(user_name: str) -> str:
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Security Alert: Password Changed</title>
+    </head>
+    <body style="margin: 0; padding: 30px 15px; background-color: #0c0d12; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f1f5f9;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; background-color: #161822; border-radius: 14px; border: 1px solid #282b3d; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);">
+        <!-- Header -->
+        <tr>
+          <td style="padding: 28px 32px 20px; border-bottom: 1px solid #282b3d; text-align: left;">
+            <span style="font-size: 17px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">AI Research Assistant</span>
+          </td>
+        </tr>
+        
+        <!-- Content -->
+        <tr>
+          <td style="padding: 32px 32px 24px;">
+            <h1 style="margin: 0 0 14px; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">
+              Security Alert: Password Changed
+            </h1>
+            <p style="margin: 0 0 16px; font-size: 14.5px; line-height: 1.6; color: #94a3b8;">
+              Hi <strong style="color: #f1f5f9;">{user_name}</strong>,<br>
+              The password for your AI Research Assistant account was successfully changed.
+            </p>
+
+            <div style="margin: 20px 0; padding: 14px 18px; background-color: #1c1427; border-left: 3px solid #10b981; border-radius: 6px;">
+              <p style="margin: 0; font-size: 13.5px; color: #e2e8f0; line-height: 1.5;">
+                If you made this change, no further action is needed.
+              </p>
+            </div>
+
+            <p style="margin: 0; font-size: 13px; color: #ef4444; line-height: 1.5;">
+              If you did not make this change, please reset your password immediately or contact support.
             </p>
           </td>
         </tr>
@@ -117,14 +209,23 @@ async def send_brevo_otp(to_email: str, otp_code: str, user_name: str = "there",
         )
         return True
 
-    subject = f"{otp_code} is your Research Assistant verification code"
-    html_content = _build_otp_html(otp_code, user_name, purpose, settings.otp_expire_minutes)
-    text_content = f"Hi {user_name},\n\nYour 6-digit verification code is: {otp_code}\n\nThis code expires in {settings.otp_expire_minutes} minutes."
+    is_reset = purpose == "password_reset"
+    subject = (
+        f"{otp_code} is your password reset code"
+        if is_reset
+        else f"{otp_code} is your Research Assistant verification code"
+    )
+    html_content = _build_otp_html(otp_code, user_name, purpose, settings.otp_expire_minutes, to_email)
+    text_content = (
+        f"Hi {user_name},\n\nYour 6-digit password reset code is: {otp_code}\n\nThis code expires in {settings.otp_expire_minutes} minutes."
+        if is_reset
+        else f"Hi {user_name},\n\nYour 6-digit verification code is: {otp_code}\n\nThis code expires in {settings.otp_expire_minutes} minutes."
+    )
 
     # 1. Try Brevo SMTP Relay
     try:
         await asyncio.to_thread(_send_smtp_sync, to_email, subject, html_content, text_content)
-        logger.info("brevo_smtp_email_sent_successfully", email=to_email)
+        logger.info("brevo_smtp_email_sent_successfully", email=to_email, purpose=purpose)
         return True
     except Exception as smtp_err:
         logger.warning("brevo_smtp_failed_trying_rest", email=to_email, error=str(smtp_err))
@@ -169,3 +270,23 @@ async def send_brevo_otp(to_email: str, otp_code: str, user_name: str = "there",
             logger.error("brevo_rest_email_exception", email=to_email, error=str(exc))
 
     return False
+
+
+async def send_password_changed_security_alert(to_email: str, user_name: str = "there") -> bool:
+    """
+    Sends a security alert email notifying the user that their password was changed.
+    """
+    subject = "Security Alert: Password Changed for AI Research Assistant"
+    html_content = _build_password_changed_alert_html(user_name)
+    text_content = (
+        f"Hi {user_name},\n\nYour password for AI Research Assistant was changed successfully.\n\n"
+        "If you did not perform this action, please reset your password immediately."
+    )
+
+    try:
+        await asyncio.to_thread(_send_smtp_sync, to_email, subject, html_content, text_content)
+        logger.info("password_changed_alert_sent", email=to_email)
+        return True
+    except Exception as exc:
+        logger.warning("password_changed_alert_failed", email=to_email, error=str(exc))
+        return False

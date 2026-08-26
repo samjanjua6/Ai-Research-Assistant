@@ -1,9 +1,14 @@
 """
 Authentication endpoints:
-  POST /auth/signup   — register a new user
-  POST /auth/login    — authenticate & get JWT
-  GET  /auth/me       — return current user profile
-  GET  /auth/terms    — return full Terms of Service text
+  POST /auth/send-signup-otp      — send 6-digit OTP for registration
+  POST /auth/verify-otp-and-signup— verify OTP & create account
+  POST /auth/resend-otp           — resend signup OTP
+  POST /auth/forgot-password      — send 6-digit OTP & 1-click magic link for password reset
+  POST /auth/verify-reset-code    — pre-validate 6-digit reset code
+  POST /auth/reset-password       — verify OTP, update password & auto-login
+  POST /auth/login                — authenticate & get JWT
+  GET  /auth/me                   — return current user profile
+  GET  /auth/terms                — return full Terms of Service text
 """
 from __future__ import annotations
 
@@ -14,7 +19,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.email import generate_otp, send_brevo_otp
+from app.core.email import generate_otp, send_brevo_otp, send_password_changed_security_alert
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.crud import (
     create_user,
@@ -22,6 +27,7 @@ from app.db.crud import (
     create_or_update_otp,
     verify_otp,
     get_otp_record,
+    update_user_password,
 )
 from app.db.database import get_db
 from app.db.models import User
@@ -93,6 +99,44 @@ class ResendOtpRequest(BaseModel):
     email: EmailStr
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyResetCodeRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+    @field_validator("otp")
+    @classmethod
+    def otp_format(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) != 6 or not v.isdigit():
+            raise ValueError("Verification code must be exactly 6 digits.")
+        return v
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return v
+
+    @field_validator("otp")
+    @classmethod
+    def otp_format(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) != 6 or not v.isdigit():
+            raise ValueError("Verification code must be exactly 6 digits.")
+        return v
+
+
 class SignupRequest(BaseModel):
     name: str
     email: EmailStr
@@ -158,7 +202,7 @@ def _user_response(user: User) -> UserResponse:
     )
 
 
-# ── Endpoints ─────────────────────────────────────────────────────
+# ── Signup & Verification Endpoints ───────────────────────────────
 
 @router.post("/send-signup-otp")
 async def send_signup_otp(
@@ -305,6 +349,198 @@ async def verify_otp_and_signup(
     token = create_access_token(user.id, user.email)
     return AuthResponse(access_token=token, user=_user_response(user))
 
+
+# ── Password Reset Endpoints ───────────────────────────────────────
+
+@router.post("/forgot-password")
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Step 1: Dispatches a 6-digit password reset code and magic link via Brevo SMTP.
+    Returns generic success message for privacy/anti-enumeration protection.
+    """
+    clean_email = body.email.strip().lower()
+    user = await get_user_by_email(db, clean_email)
+
+    if user:
+        # Check resend cooldown
+        record = await get_otp_record(db, clean_email, "password_reset")
+        now = datetime.now(timezone.utc)
+        if record and (now - record.created_at).total_seconds() < settings.otp_resend_cooldown_seconds:
+            remaining = int(settings.otp_resend_cooldown_seconds - (now - record.created_at).total_seconds())
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Please wait {remaining} seconds before requesting another reset code.",
+            )
+
+        otp_code = generate_otp()
+        expires_at = now + timedelta(minutes=settings.otp_expire_minutes)
+
+        await create_or_update_otp(
+            db,
+            email=clean_email,
+            otp_code=otp_code,
+            purpose="password_reset",
+            expires_at=expires_at,
+        )
+
+        background_tasks.add_task(
+            send_brevo_otp,
+            to_email=clean_email,
+            otp_code=otp_code,
+            user_name=user.name,
+            purpose="password_reset",
+        )
+
+    return {
+        "status": "ok",
+        "message": f"If an account exists for {clean_email}, a 6-digit reset code has been sent.",
+        "email": clean_email,
+        "expires_in_minutes": settings.otp_expire_minutes,
+    }
+
+
+@router.post("/resend-forgot-password-otp")
+async def resend_forgot_password_otp(
+    body: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """Resends a new password reset code to the email address."""
+    clean_email = body.email.strip().lower()
+    user = await get_user_by_email(db, clean_email)
+
+    if user:
+        record = await get_otp_record(db, clean_email, "password_reset")
+        now = datetime.now(timezone.utc)
+        if record and (now - record.created_at).total_seconds() < settings.otp_resend_cooldown_seconds:
+            remaining = int(settings.otp_resend_cooldown_seconds - (now - record.created_at).total_seconds())
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Please wait {remaining} seconds before requesting a new code.",
+            )
+
+        otp_code = generate_otp()
+        expires_at = now + timedelta(minutes=settings.otp_expire_minutes)
+
+        await create_or_update_otp(
+            db,
+            email=clean_email,
+            otp_code=otp_code,
+            purpose="password_reset",
+            expires_at=expires_at,
+        )
+
+        background_tasks.add_task(
+            send_brevo_otp,
+            to_email=clean_email,
+            otp_code=otp_code,
+            user_name=user.name,
+            purpose="password_reset",
+        )
+
+    return {
+        "status": "ok",
+        "message": f"If an account exists for {clean_email}, a new reset code has been sent.",
+    }
+
+
+@router.post("/verify-reset-code")
+async def verify_reset_code(
+    body: VerifyResetCodeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Pre-validates a reset code (e.g. from 1-click magic link) without invalidating it.
+    """
+    clean_email = body.email.strip().lower()
+    record = await get_otp_record(db, clean_email, "password_reset")
+    now = datetime.now(timezone.utc)
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No password reset request found. Please request a new code.",
+        )
+
+    if record.expires_at < now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset code has expired. Please request a new code.",
+        )
+
+    if record.attempts >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Too many invalid attempts. Please request a new reset code.",
+        )
+
+    if record.otp_code != body.otp.strip():
+        record.attempts += 1
+        await db.commit()
+        remaining = max(0, 5 - record.attempts)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid reset code. {remaining} attempt(s) remaining.",
+        )
+
+    return {"status": "ok", "valid": True}
+
+
+@router.post("/reset-password", response_model=AuthResponse)
+async def reset_password(
+    body: ResetPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Step 2: Validates OTP, updates the user's password, dispatches security alert, and returns JWT session.
+    """
+    clean_email = body.email.strip().lower()
+    user = await get_user_by_email(db, clean_email)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User account not found.",
+        )
+
+    is_valid, msg = await verify_otp(
+        db,
+        email=clean_email,
+        otp_code=body.otp,
+        purpose="password_reset",
+    )
+
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg,
+        )
+
+    # Update password
+    await update_user_password(
+        db,
+        user=user,
+        hashed_password=hash_password(body.new_password),
+    )
+
+    # Dispatch security alert email
+    background_tasks.add_task(
+        send_password_changed_security_alert,
+        to_email=user.email,
+        user_name=user.name,
+    )
+
+    # Issue fresh JWT session
+    token = create_access_token(user.id, user.email)
+    return AuthResponse(access_token=token, user=_user_response(user))
+
+
+# ── Direct Signup & Login Endpoints ────────────────────────────────
 
 @router.post("/signup", response_model=AuthResponse, status_code=201)
 async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):

@@ -22,6 +22,19 @@ function getShareTokenFromPath() {
   return match ? match[1] : null
 }
 
+function getMagicResetParams() {
+  if (typeof window === 'undefined') return { email: '', code: '' }
+  try {
+    const params = new URLSearchParams(window.location.search)
+    return {
+      email: params.get('reset_email') || '',
+      code: params.get('reset_code') || '',
+    }
+  } catch {
+    return { email: '', code: '' }
+  }
+}
+
 function getInitialSidebarState() {
   if (typeof window === 'undefined') return false
   const saved = localStorage.getItem('sidebar_collapsed')
@@ -47,6 +60,7 @@ export default function App() {
   } = useResearch(user)
 
   const [shareToken,          setShareToken]          = useState(getShareTokenFromPath)
+  const [magicReset,          setMagicReset]          = useState(getMagicResetParams)
   const [isSidebarCollapsed,  setIsSidebarCollapsed]  = useState(getInitialSidebarState)
   const [activeRunId,         setActiveRunId]         = useState(null)
   const [activeQuestion,      setActiveQuestion]      = useState(null)
@@ -55,7 +69,10 @@ export default function App() {
 
   // Guest draft preservation — if user types before logging in
   const [pendingQuestion,  setPendingQuestion]  = useState(null)
-  const [showAuthModal,    setShowAuthModal]    = useState(false)
+  const [showAuthModal,    setShowAuthModal]    = useState(() => {
+    const reset = getMagicResetParams()
+    return Boolean(reset.code && reset.email)
+  })
   const [authDefaultTab,   setAuthDefaultTab]   = useState('login')
 
   const currentRunId = activeRunId || hookActiveRunId || report?.id
@@ -347,9 +364,21 @@ export default function App() {
       {/* Auth modal (guest sign-in prompt or manual open from header) */}
       {showAuthModal && (
         <AuthModal
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
+          onClose={() => {
+            setShowAuthModal(false)
+            if (window.location.search) {
+              window.history.replaceState({}, '', window.location.pathname)
+            }
+          }}
+          onSuccess={(authedUser) => {
+            if (window.location.search) {
+              window.history.replaceState({}, '', window.location.pathname)
+            }
+            handleAuthSuccess(authedUser)
+          }}
           defaultTab={authDefaultTab}
+          initialEmail={magicReset.email}
+          initialResetCode={magicReset.code}
         />
       )}
     </>

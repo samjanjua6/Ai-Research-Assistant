@@ -46,6 +46,18 @@ async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def update_user_password(
+    db: AsyncSession,
+    *,
+    user: User,
+    hashed_password: str,
+) -> User:
+    user.hashed_password = hashed_password
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 # ── Email OTP helpers ──────────────────────────────────────────────
 
 async def create_or_update_otp(

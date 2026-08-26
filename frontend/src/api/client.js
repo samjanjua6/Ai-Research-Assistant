@@ -66,6 +66,58 @@ export async function resendOtp({ name, email }) {
   return res.json()
 }
 
+export async function forgotPassword(email) {
+  const res = await fetch(`${BASE}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function resendForgotPasswordOtp(email) {
+  const res = await fetch(`${BASE}/auth/resend-forgot-password-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function verifyResetCode({ email, otp }) {
+  const res = await fetch(`${BASE}/auth/verify-reset-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function resetPassword({ email, otp, new_password }) {
+  const res = await fetch(`${BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp, new_password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json() // { access_token, token_type, user }
+}
+
 export async function signup({ name, email, password, terms_accepted }) {
   const res = await fetch(`${BASE}/auth/signup`, {
     method: 'POST',
@@ -173,15 +225,6 @@ export async function fetchPublicReport(shareToken) {
 
 // ── SSE stream ───────────────────────────────────────────────────
 
-/**
- * Open an SSE stream for a run.
- * Token is appended as ?token= because EventSource cannot set headers.
- * Returns a cleanup function — call it to close the stream.
- *
- * @param {string} runId
- * @param {{ onStep: Function, onToken?: Function, onDone: Function, onError: Function }} handlers
- * @returns {() => void} cleanup
- */
 export function openStream(runId, { onStep, onToken, onDone, onError }) {
   const token = getToken()
   const url = token

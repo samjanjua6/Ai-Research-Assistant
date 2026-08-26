@@ -4,6 +4,10 @@ import {
   sendSignupOtp as apiSendSignupOtp,
   verifyOtpAndSignup as apiVerifyOtpAndSignup,
   resendOtp as apiResendOtp,
+  forgotPassword as apiForgotPassword,
+  resendForgotPasswordOtp as apiResendForgotPasswordOtp,
+  verifyResetCode as apiVerifyResetCode,
+  resetPassword as apiResetPassword,
   login as apiLogin,
   fetchMe,
   getToken,
@@ -57,6 +61,26 @@ export function AuthProvider({ children }) {
     return await apiResendOtp({ name, email })
   }, [])
 
+  // ── password reset ────────────────────────────────────────────
+  const forgotPassword = useCallback(async (email) => {
+    return await apiForgotPassword(email)
+  }, [])
+
+  const resendForgotPasswordOtp = useCallback(async (email) => {
+    return await apiResendForgotPasswordOtp(email)
+  }, [])
+
+  const verifyResetCode = useCallback(async ({ email, otp }) => {
+    return await apiVerifyResetCode({ email, otp })
+  }, [])
+
+  const resetPassword = useCallback(async ({ email, otp, new_password }) => {
+    const data = await apiResetPassword({ email, otp, new_password })
+    setToken(data.access_token)
+    setUser(data.user)
+    return data.user
+  }, [])
+
   // ── direct signup fallback ────────────────────────────────────
   const signup = useCallback(async ({ name, email, password, terms_accepted }) => {
     const data = await apiSignup({ name, email, password, terms_accepted })
@@ -79,6 +103,10 @@ export function AuthProvider({ children }) {
     sendSignupOtp,
     verifyOtpAndSignup,
     resendOtp,
+    forgotPassword,
+    resendForgotPasswordOtp,
+    verifyResetCode,
+    resetPassword,
     logout,
   }
 
