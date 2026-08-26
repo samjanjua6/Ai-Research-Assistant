@@ -2589,5 +2589,17 @@ ul { list-style: none; padding: 0; margin: 0; }
   }
 }
 
+/* ── Dropdown Item Styles ────────────────────────────────────────── */
+.dropdown-item {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.dropdown-item:hover {
+  background-color: var(--panel-alt) !important;
+}
+.dropdown-item.dropdown-danger:hover {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+
 
 

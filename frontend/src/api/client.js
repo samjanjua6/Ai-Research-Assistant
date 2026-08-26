@@ -152,6 +152,41 @@ export async function fetchMe() {
   return res.json()
 }
 
+export async function fetchAccountSummary() {
+  const res = await fetch(`${BASE}/auth/account-summary`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function exportUserData() {
+  const res = await fetch(`${BASE}/auth/export-data`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function deleteAccount(password) {
+  const res = await fetch(`${BASE}/auth/account`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
 export async function fetchTerms() {
   const res = await fetch(`${BASE}/auth/terms`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)

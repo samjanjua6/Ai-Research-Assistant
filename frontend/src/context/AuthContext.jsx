@@ -10,6 +10,9 @@ import {
   resetPassword as apiResetPassword,
   login as apiLogin,
   fetchMe,
+  fetchAccountSummary as apiFetchAccountSummary,
+  exportUserData as apiExportUserData,
+  deleteAccount as apiDeleteAccount,
   getToken,
   setToken,
   clearToken,
@@ -81,6 +84,22 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
+  // ── account management & deletion ─────────────────────────────
+  const fetchAccountSummary = useCallback(async () => {
+    return await apiFetchAccountSummary()
+  }, [])
+
+  const exportUserData = useCallback(async () => {
+    return await apiExportUserData()
+  }, [])
+
+  const deleteAccount = useCallback(async (password) => {
+    const res = await apiDeleteAccount(password)
+    clearToken()
+    setUser(null)
+    return res
+  }, [])
+
   // ── direct signup fallback ────────────────────────────────────
   const signup = useCallback(async ({ name, email, password, terms_accepted }) => {
     const data = await apiSignup({ name, email, password, terms_accepted })
@@ -107,6 +126,9 @@ export function AuthProvider({ children }) {
     resendForgotPasswordOtp,
     verifyResetCode,
     resetPassword,
+    fetchAccountSummary,
+    exportUserData,
+    deleteAccount,
     logout,
   }
 

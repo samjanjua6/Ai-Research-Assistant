@@ -58,6 +58,76 @@ async def update_user_password(
     return user
 
 
+async def get_user_account_summary(db: AsyncSession, user: User) -> dict[str, Any]:
+    """Returns summary stats for the user account before deletion."""
+    result = await db.execute(
+        select(ResearchRun.id).where(ResearchRun.user_id == user.id)
+    )
+    run_ids = result.scalars().all()
+
+    return {
+        "user_id": str(user.id),
+        "name": user.name,
+        "email": user.email,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "runs_count": len(run_ids),
+    }
+
+
+async def get_user_export_data(db: AsyncSession, user: User) -> dict[str, Any]:
+    """Generates complete GDPR JSON data export for the user."""
+    result = await db.execute(
+        select(ResearchRun).where(ResearchRun.user_id == user.id).order_by(desc(ResearchRun.created_at))
+    )
+    runs = result.scalars().all()
+
+    return {
+        "export_date": datetime.now(timezone.utc).isoformat(),
+        "user": {
+            "id": str(user.id),
+            "name": user.name,
+            "email": user.email,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "terms_accepted_at": user.terms_accepted_at.isoformat() if user.terms_accepted_at else None,
+            "terms_version": user.terms_version,
+        },
+        "research_runs": [
+            {
+                "id": str(r.id),
+                "question": r.question,
+                "status": r.status.value,
+                "summary": r.summary,
+                "final_report": r.final_report,
+                "sources": r.sources,
+                "loop_count": r.loop_count,
+                "is_public": r.is_public,
+                "share_token": r.share_token,
+                "views_count": r.views_count,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+            }
+            for r in runs
+        ],
+    }
+
+
+async def delete_user_account(db: AsyncSession, *, user: User) -> None:
+    """
+    Permanently deletes user account, cascading down to all research runs, step logs,
+    and removing any associated email verification records.
+    """
+    clean_email = user.email.strip().lower()
+
+    # 1. Delete associated email verification & OTP records
+    await db.execute(
+        delete(EmailVerification).where(EmailVerification.email == clean_email)
+    )
+
+    # 2. Delete the user instance (DB & ORM cascades delete research_runs & step_logs)
+    await db.delete(user)
+    await db.commit()
+
+
 # ── Email OTP helpers ──────────────────────────────────────────────
 
 async def create_or_update_otp(

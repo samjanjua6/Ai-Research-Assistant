@@ -290,3 +290,78 @@ async def send_password_changed_security_alert(to_email: str, user_name: str = "
     except Exception as exc:
         logger.warning("password_changed_alert_failed", email=to_email, error=str(exc))
         return False
+
+
+def _build_account_deleted_html(user_name: str) -> str:
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Account Deleted</title>
+    </head>
+    <body style="margin: 0; padding: 30px 15px; background-color: #0c0d12; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f1f5f9;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; background-color: #161822; border-radius: 14px; border: 1px solid #282b3d; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);">
+        <!-- Header -->
+        <tr>
+          <td style="padding: 28px 32px 20px; border-bottom: 1px solid #282b3d; text-align: left;">
+            <span style="font-size: 17px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">AI Research Assistant</span>
+          </td>
+        </tr>
+        
+        <!-- Content -->
+        <tr>
+          <td style="padding: 32px 32px 24px;">
+            <h1 style="margin: 0 0 14px; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">
+              Account Deleted Confirmation
+            </h1>
+            <p style="margin: 0 0 16px; font-size: 14.5px; line-height: 1.6; color: #94a3b8;">
+              Hi <strong style="color: #f1f5f9;">{user_name}</strong>,<br>
+              Your AI Research Assistant account and all associated research runs, syntheses, and logs have been permanently deleted as requested.
+            </p>
+
+            <div style="margin: 20px 0; padding: 14px 18px; background-color: #1a1622; border-left: 3px solid #7c6af0; border-radius: 6px;">
+              <p style="margin: 0; font-size: 13.5px; color: #cbd5e1; line-height: 1.5;">
+                All personal data has been erased from our primary databases in compliance with our data retention policy.
+              </p>
+            </div>
+
+            <p style="margin: 0; font-size: 12.5px; color: #64748b; line-height: 1.5;">
+              Thank you for using AI Research Assistant. You are welcome back anytime at <a href="https://research.mychatbot.codes" style="color: #7c6af0; text-decoration: none;">research.mychatbot.codes</a>.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 20px 32px; background-color: #11131c; border-top: 1px solid #282b3d; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #64748b;">
+              Autonomous Deep Research Assistant &nbsp;·&nbsp; <a href="https://research.mychatbot.codes" style="color: #7c3aed; text-decoration: none;">research.mychatbot.codes</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """
+
+
+async def send_account_deleted_email(to_email: str, user_name: str = "there") -> bool:
+    """
+    Sends a confirmation email notifying the user that their account was deleted.
+    """
+    subject = "Your AI Research Assistant Account Has Been Deleted"
+    html_content = _build_account_deleted_html(user_name)
+    text_content = (
+        f"Hi {user_name},\n\nYour AI Research Assistant account and all associated research data have been permanently deleted.\n\n"
+        "Thank you for using AI Research Assistant."
+    )
+
+    try:
+        await asyncio.to_thread(_send_smtp_sync, to_email, subject, html_content, text_content)
+        logger.info("account_deleted_email_sent", email=to_email)
+        return True
+    except Exception as exc:
+        logger.warning("account_deleted_email_failed", email=to_email, error=str(exc))
+        return False

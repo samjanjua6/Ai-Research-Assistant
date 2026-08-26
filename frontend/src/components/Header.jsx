@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { Plus, LogOut, PanelLeft } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, User as UserIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
+import { DeleteAccountModal } from './DeleteAccountModal'
 import { ThemeToggle } from './ThemeToggle'
 import { useToast } from '../context/ToastContext'
 import { Logo } from './brand/Logo'
@@ -10,8 +11,27 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
   const { user, logout } = useAuth()
   const { info: toastInfo } = useToast()
   const [showAuth, setShowAuth] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const menuRef = useRef(null)
+
+  // Close dropdown menu on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowUserMenu(false)
+      }
+    }
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showUserMenu])
 
   const handleLogout = () => {
+    setShowUserMenu(false)
     logout()
     toastInfo('You have been signed out.', { title: 'Signed Out' })
   }
@@ -64,21 +84,115 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
           <ThemeToggle />
 
           {user ? (
-            <div className="user-menu">
-              <div className="user-avatar" title={user.name} aria-label={`Signed in as ${user.name}`}>
-                {initials}
-              </div>
-              <div className="user-info">
-                <span className="user-name">{user.name}</span>
-              </div>
+            <div className="user-menu-wrapper" ref={menuRef} style={{ position: 'relative' }}>
               <button
-                className="btn btn-ghost btn-sm"
-                onClick={handleLogout}
-                title="Sign out"
+                type="button"
+                className="user-avatar-btn"
+                onClick={() => setShowUserMenu((v) => !v)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  cursor: 'pointer',
+                }}
+                aria-haspopup="true"
+                aria-expanded={showUserMenu}
               >
-                <LogOut size={13} strokeWidth={1.75} />
-                <span>Sign Out</span>
+                <div className="user-avatar" title={user.name}>
+                  {initials}
+                </div>
+                <span className="user-name" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                  {user.name}
+                </span>
+                <ChevronDown size={13} strokeWidth={2} style={{ color: 'var(--text-dim)' }} />
               </button>
+
+              {/* User Dropdown Menu */}
+              {showUserMenu && (
+                <div
+                  className="user-dropdown-menu animate-in"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: 220,
+                    backgroundColor: 'var(--panel)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    padding: '6px',
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
+                    zIndex: 350,
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: '8px 10px 10px',
+                      borderBottom: '1px solid var(--border)',
+                      marginBottom: 4,
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                      {user.name}
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text-dim)', wordBreak: 'break-all' }}>
+                      {user.email}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="dropdown-item"
+                    onClick={handleLogout}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      fontSize: '12.5px',
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <LogOut size={13} strokeWidth={1.75} />
+                    <span>Sign Out</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="dropdown-item dropdown-danger"
+                    onClick={() => {
+                      setShowUserMenu(false)
+                      setShowDeleteModal(true)
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      fontSize: '12.5px',
+                      color: '#ef4444',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      cursor: 'pointer',
+                      marginTop: 2,
+                    }}
+                  >
+                    <Trash2 size={13} strokeWidth={1.75} />
+                    <span>Delete Account</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <button
@@ -95,6 +209,15 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
         <AuthModal
           onClose={() => setShowAuth(false)}
           onSuccess={() => setShowAuth(false)}
+        />
+      )}
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          onClose={() => setShowDeleteModal(false)}
+          onDeleted={() => {
+            if (onNewResearch) onNewResearch()
+          }}
         />
       )}
     </>

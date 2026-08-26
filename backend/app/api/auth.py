@@ -19,7 +19,12 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.email import generate_otp, send_brevo_otp, send_password_changed_security_alert
+from app.core.email import (
+    generate_otp,
+    send_brevo_otp,
+    send_password_changed_security_alert,
+    send_account_deleted_email,
+)
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.crud import (
     create_user,
@@ -28,6 +33,9 @@ from app.db.crud import (
     verify_otp,
     get_otp_record,
     update_user_password,
+    get_user_account_summary,
+    get_user_export_data,
+    delete_user_account,
 )
 from app.db.database import get_db
 from app.db.models import User
@@ -585,6 +593,64 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 async def get_me(current_user: User = Depends(get_current_user)):
     """Return the currently authenticated user's profile."""
     return _user_response(current_user)
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str
+
+
+@router.get("/account-summary")
+async def get_account_summary(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return summary statistics for the user's account prior to deletion."""
+    return await get_user_account_summary(db, current_user)
+
+
+@router.get("/export-data")
+async def export_user_data(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generates a complete JSON backup archive of all user research data."""
+    return await get_user_export_data(db, current_user)
+
+
+@router.delete("/account")
+async def delete_account(
+    body: DeleteAccountRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Permanently deletes user account and cascades down to all research runs,
+    step logs, and verification records. Requires password confirmation.
+    """
+    if not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect password. Please enter your valid current password to confirm deletion.",
+        )
+
+    user_email = current_user.email
+    user_name = current_user.name
+
+    # Perform cascade purge
+    await delete_user_account(db, user=current_user)
+
+    # Dispatch goodbye notification email in background
+    background_tasks.add_task(
+        send_account_deleted_email,
+        to_email=user_email,
+        user_name=user_name,
+    )
+
+    return {
+        "status": "ok",
+        "message": "Account and all associated research data have been permanently deleted.",
+    }
 
 
 @router.get("/terms")
