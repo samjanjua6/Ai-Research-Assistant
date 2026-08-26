@@ -36,7 +36,7 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
         rows={4}
       />
 
-      <div className="question-tip">Tip: Press ⌘/Ctrl + Enter to run</div>
+      <div className="question-tip">Tip: Press Ctrl + Enter (or Cmd + Enter) to run</div>
 
       <div className="form-actions">
         {isLoading ? (

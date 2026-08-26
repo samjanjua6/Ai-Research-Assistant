@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Sparkles, RotateCcw } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import { useResearch } from './hooks/useResearch'
 import { AuthModal } from './components/AuthModal'
@@ -190,7 +191,9 @@ export default function App() {
     return (
       <div className="auth-splash">
         <div className="auth-splash-inner">
-          <span className="topbar-mark">🔬</span>
+          <span className="topbar-mark">
+            <Sparkles size={18} strokeWidth={2} />
+          </span>
           <p>Checking session…</p>
         </div>
       </div>
@@ -326,8 +329,10 @@ export default function App() {
                     type="button"
                     className="btn btn-primary"
                     onClick={() => handleSubmit(activeQuestion || formQuestion)}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   >
-                    🔄 Retry Research Run
+                    <RotateCcw size={14} strokeWidth={2} />
+                    <span>Retry Research Run</span>
                   </button>
                 }
               />

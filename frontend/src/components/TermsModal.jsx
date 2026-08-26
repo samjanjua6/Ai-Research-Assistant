@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import { fetchTerms } from '../api/client'
 
 export function TermsModal({ onClose }) {
@@ -22,7 +23,9 @@ export function TermsModal({ onClose }) {
       >
         <div className="modal-header">
           <h2 className="modal-title">Terms of Service &amp; AI Usage Policy</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            <X size={16} strokeWidth={2} />
+          </button>
         </div>
 
         <div className="terms-body">

@@ -136,19 +136,19 @@ export function useResearch(currentUser = null) {
             sources:      data.sources || [],
           })
           setPhase('done')
-          toast.success('Research report synthesized and finalized!', { title: '✨ Report Ready' })
+          toast.success('Research report synthesized and finalized!', { title: 'Report Ready' })
         } else {
           const errText = data.error || 'Research run failed — check server logs.'
           setError(errText)
           setPhase('error')
-          toast.error(errText, { title: '❌ Research Failed' })
+          toast.error(errText, { title: 'Research Failed' })
         }
         loadHistory()
       },
       onError: (err) => {
         setError(err.message)
         setPhase('error')
-        toast.error(err.message || 'Stream disconnected', { title: '⚠️ Connection Error' })
+        toast.error(err.message || 'Stream disconnected', { title: 'Connection Error' })
         loadHistory()
       },
     })
@@ -164,7 +164,7 @@ export function useResearch(currentUser = null) {
     setStreamingLoop(0)
     setError(null)
     setPhase('streaming')
-    toast.info('Research started — formulating plan…', { title: '🚀 Run Started' })
+    toast.info('Research started — formulating plan…', { title: 'Run Started' })
 
     try {
       const { run_id } = await startRun(question)
@@ -176,7 +176,7 @@ export function useResearch(currentUser = null) {
     } catch (err) {
       setError(err.message)
       setPhase('error')
-      toast.error(err.message || 'Failed to start research run', { title: '❌ Request Failed' })
+      toast.error(err.message || 'Failed to start research run', { title: 'Request Failed' })
       return null
     }
   }, [closeStream, loadHistory, _startStream])
@@ -194,7 +194,7 @@ export function useResearch(currentUser = null) {
     }
     setError('Research stopped by user.')
     setPhase('error')
-    toast.warning('Research process stopped.', { title: '⏹️ Stopped' })
+    toast.warning('Research process stopped.', { title: 'Process Stopped' })
     loadHistory()
   }, [closeStream, loadHistory])
 

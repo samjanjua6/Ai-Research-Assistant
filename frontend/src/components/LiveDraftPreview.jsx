@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
+import { Zap, ArrowDown } from 'lucide-react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { linkifyCitations, CitationBadge } from '../utils/citations'
@@ -80,8 +81,8 @@ export default function LiveDraftPreview({ text, node, loop = 0 }) {
         </div>
 
         <div className="live-draft-stats">
-          <span className="live-word-count-chip">
-            ⚡ {wordCount} words
+          <span className="live-word-count-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Zap size={11} strokeWidth={2} /> {wordCount} words
           </span>
         </div>
       </div>
@@ -102,8 +103,9 @@ export default function LiveDraftPreview({ text, node, loop = 0 }) {
           type="button"
           className="live-scroll-bottom-btn"
           onClick={handleScrollToBottom}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
         >
-          ⬇ Follow live stream
+          <ArrowDown size={12} strokeWidth={2} /> Follow live stream
         </button>
       )}
     </div>

@@ -366,21 +366,29 @@ export function WelcomeHeroIllustration({ className = '' }) {
         {/* Node 1: Plan */}
         <g transform="translate(60, 45)">
           <circle cx="0" cy="0" r="18" fill="var(--panel)" stroke="var(--violet)" strokeWidth="1.5" />
-          <text x="0" y="5" textAnchor="middle" fontSize="13">📋</text>
+          <g transform="translate(-7, -7)">
+            <rect x="2" y="2" width="10" height="10" rx="1.5" fill="none" stroke="var(--violet)" strokeWidth="1.5" />
+            <path d="M5 5h4M5 7.5h4M5 10h2" stroke="var(--violet)" strokeWidth="1.2" strokeLinecap="round" />
+          </g>
           <text x="0" y="28" textAnchor="middle" fill="var(--text-dim)" fontSize="9" fontWeight="600">PLAN</text>
         </g>
 
         {/* Node 2: Search */}
         <g transform="translate(150, 45)">
           <circle cx="0" cy="0" r="18" fill="var(--panel)" stroke="var(--violet)" strokeWidth="1.5" />
-          <text x="0" y="5" textAnchor="middle" fontSize="13">🔍</text>
+          <g transform="translate(-6, -6)">
+            <circle cx="5" cy="5" r="3.5" fill="none" stroke="var(--violet)" strokeWidth="1.5" />
+            <path d="M7.5 7.5L11 11" stroke="var(--violet)" strokeWidth="1.5" strokeLinecap="round" />
+          </g>
           <text x="0" y="28" textAnchor="middle" fill="var(--text-dim)" fontSize="9" fontWeight="600">SEARCH</text>
         </g>
 
         {/* Node 3: Synthesize */}
         <g transform="translate(240, 45)">
           <circle cx="0" cy="0" r="18" fill="var(--panel)" stroke="var(--violet)" strokeWidth="1.5" />
-          <text x="0" y="5" textAnchor="middle" fontSize="13">✍️</text>
+          <g transform="translate(-6, -6)">
+            <path d="M9.5 2.5L10.5 3.5L4 10H3V9L9.5 2.5Z" fill="none" stroke="var(--violet)" strokeWidth="1.4" strokeLinejoin="round" />
+          </g>
           <text x="0" y="28" textAnchor="middle" fill="var(--text-dim)" fontSize="9" fontWeight="600">DRAFT</text>
         </g>
 
@@ -388,7 +396,9 @@ export function WelcomeHeroIllustration({ className = '' }) {
         <g transform="translate(330, 45)">
           <circle cx="0" cy="0" r="18" fill="var(--panel)" stroke="var(--violet)" strokeWidth="2" />
           <circle cx="0" cy="0" r="22" fill="none" stroke="var(--violet)" strokeOpacity="0.25" strokeWidth="1" strokeDasharray="3 3" />
-          <text x="0" y="5" textAnchor="middle" fontSize="13">✨</text>
+          <g transform="translate(-7, -7)">
+            <path d="M7 1L8.5 5.5L13 7L8.5 8.5L7 13L5.5 8.5L1 7L5.5 5.5L7 1Z" fill="var(--violet)" />
+          </g>
           <text x="0" y="28" textAnchor="middle" fill="var(--violet)" fontSize="9" fontWeight="700">REPORT</text>
         </g>
       </svg>

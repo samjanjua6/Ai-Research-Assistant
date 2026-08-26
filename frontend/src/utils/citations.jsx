@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Copy, Check, ExternalLink } from 'lucide-react'
 import { toast } from '../context/ToastContext'
 
 /**
@@ -117,7 +118,7 @@ export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
     if (!url) return
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
-      toast.success(`Source link copied: ${domain || url}`, { title: '🔗 Link Copied' })
+      toast.success(`Source link copied: ${domain || url}`, { title: 'Link Copied' })
       setTimeout(() => setCopied(false), 1500)
     })
   }
@@ -173,8 +174,17 @@ export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
                 type="button"
                 className="citation-action-btn"
                 onClick={handleCopyUrl}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
-                {copied ? '✓ Copied' : '📋 Copy URL'}
+                {copied ? (
+                  <>
+                    <Check size={11} strokeWidth={2.2} className="icon-success-pop" /> Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy size={11} strokeWidth={1.75} /> Copy URL
+                  </>
+                )}
               </button>
 
               <a
@@ -183,8 +193,10 @@ export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
                 rel="noopener noreferrer"
                 className="citation-action-btn citation-open-btn"
                 onClick={(e) => e.stopPropagation()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
-                Open link ↗
+                <span>Open link</span>
+                <ExternalLink size={11} strokeWidth={2} />
               </a>
             </div>
           )}

@@ -6,6 +6,7 @@ import {
   Atom,
   CheckCircle2,
   AlertCircle,
+  RotateCcw,
   X,
 } from 'lucide-react'
 import {
@@ -101,7 +102,9 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun,
       {(runs.length >= 2 || isFiltered) && (
         <div className="history-filter-section">
           <div className="history-search-wrap">
-            <span className="history-search-icon">🔍</span>
+            <span className="history-search-icon">
+              <Search size={13} strokeWidth={2} />
+            </span>
             <input
               type="text"
               className="history-search-input"
@@ -251,8 +254,9 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun,
                         onRetry(run.question)
                       }}
                       title="Retry this research run"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     >
-                      🔄 Retry
+                      <RotateCcw size={11} strokeWidth={2} /> Retry
                     </button>
                   )}
                 </div>
