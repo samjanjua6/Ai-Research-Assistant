@@ -24,6 +24,7 @@ import {
   UserX,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
   Database,
   X,
   Check,
@@ -92,9 +93,12 @@ export function AdminDashboard({ onBackToApp }) {
   const [usersSearch, setUsersSearch] = useState('')
   const [usersLoading, setUsersLoading] = useState(false)
 
+  const RUNS_PAGE_SIZE = 10
+
   const [runsData, setRunsData] = useState({ total: 0, items: [] })
   const [runsSearch, setRunsSearch] = useState('')
   const [runsStatusFilter, setRunsStatusFilter] = useState('all')
+  const [runsPage, setRunsPage] = useState(1)
   const [runsLoading, setRunsLoading] = useState(false)
 
   const [healthData, setHealthData] = useState(null)
@@ -130,16 +134,18 @@ export function AdminDashboard({ onBackToApp }) {
     }
   }, [toastError])
 
-  // ── 3. Fetch Runs ─────────────────────────────────────────────
-  const loadRuns = useCallback(async (searchQuery = '', statusFilter = 'all') => {
+  // ── 3. Fetch Runs with 10-item pagination ─────────────────────
+  const loadRuns = useCallback(async (page = 1, searchQuery = '', statusFilter = 'all') => {
     setRunsLoading(true)
     try {
       const data = await fetchAdminRuns({
         search: searchQuery,
         status: statusFilter,
-        limit: 100,
+        limit: RUNS_PAGE_SIZE,
+        offset: (page - 1) * RUNS_PAGE_SIZE,
       })
       setRunsData(data)
+      setRunsPage(page)
     } catch (err) {
       toastError(err.message || 'Failed to load research runs', { title: 'Runs Error' })
     } finally {
@@ -166,18 +172,18 @@ export function AdminDashboard({ onBackToApp }) {
     try {
       if (activeTab === 'overview') await loadOverview()
       if (activeTab === 'users') await loadUsers(usersSearch)
-      if (activeTab === 'runs') await loadRuns(runsSearch, runsStatusFilter)
+      if (activeTab === 'runs') await loadRuns(runsPage, runsSearch, runsStatusFilter)
       if (activeTab === 'health') await loadHealth()
     } finally {
       setIsRefreshing(false)
     }
-  }, [activeTab, loadOverview, loadUsers, loadRuns, loadHealth, usersSearch, runsSearch, runsStatusFilter])
+  }, [activeTab, loadOverview, loadUsers, loadRuns, loadHealth, usersSearch, runsPage, runsSearch, runsStatusFilter])
 
   // Initial tab loading
   useEffect(() => {
     if (activeTab === 'overview') loadOverview()
     if (activeTab === 'users') loadUsers(usersSearch)
-    if (activeTab === 'runs') loadRuns(runsSearch, runsStatusFilter)
+    if (activeTab === 'runs') loadRuns(runsPage, runsSearch, runsStatusFilter)
     if (activeTab === 'health') loadHealth()
   }, [activeTab])
 
@@ -711,7 +717,7 @@ export function AdminDashboard({ onBackToApp }) {
                       type="button"
                       onClick={() => {
                         setRunsStatusFilter(st)
-                        loadRuns(runsSearch, st)
+                        loadRuns(1, runsSearch, st)
                       }}
                       style={{
                         padding: '4px 10px',
@@ -740,7 +746,7 @@ export function AdminDashboard({ onBackToApp }) {
                     value={runsSearch}
                     onChange={(e) => {
                       setRunsSearch(e.target.value)
-                      loadRuns(e.target.value, runsStatusFilter)
+                      loadRuns(1, e.target.value, runsStatusFilter)
                     }}
                     style={{ paddingLeft: 32, fontSize: '13px', height: 36 }}
                   />
@@ -833,6 +839,80 @@ export function AdminDashboard({ onBackToApp }) {
                   </tbody>
                 </table>
               </div>
+
+              {/* 10-Item Pagination Bar */}
+              {runsData.total > 0 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 18px',
+                    backgroundColor: 'var(--panel-alt)',
+                    borderTop: '1px solid var(--border)',
+                    fontSize: '12.5px',
+                    color: 'var(--text-dim)',
+                    flexWrap: 'wrap',
+                    gap: 10,
+                  }}
+                >
+                  <div>
+                    Showing{' '}
+                    <strong style={{ color: 'var(--text)' }}>
+                      {(runsPage - 1) * RUNS_PAGE_SIZE + 1}
+                    </strong>{' '}
+                    to{' '}
+                    <strong style={{ color: 'var(--text)' }}>
+                      {Math.min(runsPage * RUNS_PAGE_SIZE, runsData.total)}
+                    </strong>{' '}
+                    of <strong style={{ color: 'var(--text)' }}>{runsData.total}</strong> runs
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => loadRuns(runsPage - 1, runsSearch, runsStatusFilter)}
+                      disabled={runsPage <= 1 || runsLoading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        height: 28,
+                      }}
+                    >
+                      <ChevronLeft size={13} strokeWidth={2} />
+                      <span>Previous</span>
+                    </button>
+
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', padding: '0 4px' }}>
+                      Page {runsPage} of {Math.max(1, Math.ceil(runsData.total / RUNS_PAGE_SIZE))}
+                    </span>
+
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => loadRuns(runsPage + 1, runsSearch, runsStatusFilter)}
+                      disabled={
+                        runsPage >= Math.ceil(runsData.total / RUNS_PAGE_SIZE) || runsLoading
+                      }
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        height: 28,
+                      }}
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={13} strokeWidth={2} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
