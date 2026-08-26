@@ -157,5 +157,15 @@ async def serve_share_page(share_token: str):
         return FileResponse(index_file)
 
 
+@app.get("/admin", include_in_schema=False)
+@app.get("/admin/{full_path:path}", include_in_schema=False)
+async def serve_admin_spa(full_path: str = ""):
+    """Serve SPA index.html for direct navigation or hard-refresh on /admin routes."""
+    index_file = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse("<h1>Frontend build not found</h1>", status_code=404)
+
+
 if os.path.isdir(frontend_dist):
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

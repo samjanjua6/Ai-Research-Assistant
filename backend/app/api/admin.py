@@ -385,7 +385,7 @@ async def get_admin_run_detail(
 
     # Steps
     steps_res = await db.execute(
-        select(StepLog).where(StepLog.run_id == run_id).order_by(StepLog.step_index)
+        select(StepLog).where(StepLog.run_id == run_id).order_by(StepLog.logged_at)
     )
     steps = steps_res.scalars().all()
 
@@ -407,12 +407,11 @@ async def get_admin_run_detail(
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,
         "step_logs": [
             {
-                "step_index": s.step_index,
-                "node_name": s.node_name,
-                "summary": s.summary,
-                "query": s.query,
-                "sources": s.sources,
-                "timestamp": s.timestamp.isoformat() if s.timestamp else None,
+                "id": str(s.id),
+                "step_name": s.step_name,
+                "loop_index": s.loop_index,
+                "payload": s.payload,
+                "logged_at": s.logged_at.isoformat() if s.logged_at else None,
             }
             for s in steps
         ],
