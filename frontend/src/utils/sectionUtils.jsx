@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import { toast } from '../context/ToastContext'
 
 /**
  * Converts heading text to a clean URL-friendly slug.
@@ -114,6 +115,8 @@ export function SectionHeading({ level = 2, children, rawMarkdown, ...props }) {
       const sectionText = extractSectionMarkdown(textContent, rawMarkdown, level)
       navigator.clipboard.writeText(sectionText).then(() => {
         setCopiedSection(true)
+        const preview = textContent.length > 28 ? `${textContent.slice(0, 28)}…` : textContent
+        toast.success(`Copied section "${preview}"`, { title: '📋 Section Copied' })
         setTimeout(() => setCopiedSection(false), 1800)
       })
     },
@@ -128,6 +131,7 @@ export function SectionHeading({ level = 2, children, rawMarkdown, ...props }) {
       window.history.pushState({}, '', url.toString())
       navigator.clipboard.writeText(url.toString()).then(() => {
         setCopiedLink(true)
+        toast.success(`Direct section link copied: #${slug}`, { title: '🔗 Link Copied' })
         setTimeout(() => setCopiedLink(false), 1800)
       })
     },
@@ -177,6 +181,7 @@ export function CodeBlock({ children, ...props }) {
     const text = codeRef.current.innerText || ''
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
+      toast.success('Code block copied to clipboard', { title: '📋 Code Copied' })
       setTimeout(() => setCopied(false), 1800)
     })
   }
@@ -268,6 +273,7 @@ export function TableBlock({ children, ...props }) {
 
     navigator.clipboard.writeText(tableText).then(() => {
       setCopied(true)
+      toast.success('Table copied as clean Markdown', { title: '📋 Table Copied' })
       setTimeout(() => setCopied(false), 1800)
     })
   }

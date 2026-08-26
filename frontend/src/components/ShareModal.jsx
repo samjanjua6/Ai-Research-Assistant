@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { shareRun } from '../api/client'
+import { toast } from '../context/ToastContext'
 
 export function ShareModal({ runId, question, onClose }) {
   const [loading, setLoading] = useState(true)
@@ -40,6 +41,7 @@ export function ShareModal({ runId, question, onClose }) {
     if (!fullShareUrl) return
     navigator.clipboard.writeText(fullShareUrl).then(() => {
       setCopied(true)
+      toast.success('Public report link copied to clipboard!', { title: '🔗 Link Copied' })
       setTimeout(() => setCopied(false), 2000)
     })
   }, [fullShareUrl])
@@ -61,8 +63,12 @@ export function ShareModal({ runId, question, onClose }) {
     try {
       const data = await shareRun(runId, nextState)
       setIsPublic(data.is_public)
+      toast.info(nextState ? 'Public link is active.' : 'Public link has been disabled.', {
+        title: nextState ? '🌐 Public Sharing Enabled' : '🔒 Private Mode Active',
+      })
     } catch {
       setIsPublic(!nextState)
+      toast.error('Failed to update sharing settings', { title: '❌ Error' })
     }
   }
 

@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ShareModal } from './ShareModal'
+import { toast } from '../context/ToastContext'
 import {
   linkifyCitations,
   countCitationFrequencies,
@@ -244,6 +245,7 @@ export default function ReportPanel({ report, question, runId }) {
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(report.final_report || '').then(() => {
       setCopied(true)
+      toast.success('Full research report copied to clipboard!', { title: '📋 Copied Report' })
       setTimeout(() => setCopied(false), 1500)
     })
   }, [report.final_report])
@@ -253,6 +255,7 @@ export default function ReportPanel({ report, question, runId }) {
     if (!report.summary) return
     navigator.clipboard.writeText(report.summary).then(() => {
       setCopiedSummary(true)
+      toast.success('Executive summary copied to clipboard!', { title: '📋 Copied Summary' })
       setTimeout(() => setCopiedSummary(false), 1500)
     })
   }, [report.summary])
@@ -260,6 +263,7 @@ export default function ReportPanel({ report, question, runId }) {
   const handleCopySourceUrl = useCallback((url, index) => {
     navigator.clipboard.writeText(url).then(() => {
       setCopiedUrlIdx(index)
+      toast.success(`Source link copied: ${extractDomain(url)}`, { title: '🔗 Copied URL' })
       setTimeout(() => setCopiedUrlIdx(null), 1500)
     })
   }, [])
@@ -281,6 +285,7 @@ export default function ReportPanel({ report, question, runId }) {
     a.download = `research-report-${Date.now()}.md`
     a.click()
     URL.revokeObjectURL(url)
+    toast.success('Downloaded report as Markdown (.md)', { title: '📥 Download Complete' })
   }, [report])
 
   // ── Export PDF ─────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { TermsModal } from './TermsModal'
 
 /**
@@ -12,6 +13,7 @@ import { TermsModal } from './TermsModal'
  */
 export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
   const { login, signup } = useAuth()
+  const { success: toastSuccess } = useToast()
   const [tab, setTab] = useState(defaultTab)
 
   // Login form state
@@ -39,6 +41,7 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
     clearError()
     try {
       const user = await login({ email: loginEmail, password: loginPassword })
+      toastSuccess(`Welcome back, ${user.name}!`, { title: '✨ Signed In' })
       onSuccess?.(user)
     } catch (err) {
       setError(err.message)
@@ -61,8 +64,9 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
         name: signupName,
         email: signupEmail,
         password: signupPassword,
-        terms_accepted: true,
+        terms_accepted: termsAccepted,
       })
+      toastSuccess(`Account created! Welcome, ${user.name}!`, { title: '🎉 Account Created' })
       onSuccess?.(user)
     } catch (err) {
       setError(err.message)

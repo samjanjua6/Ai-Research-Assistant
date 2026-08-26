@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { toast } from '../context/ToastContext'
 
 /**
  * Extract clean domain name from URL (e.g. 'nature.com').
@@ -116,6 +117,7 @@ export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
     if (!url) return
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
+      toast.success(`Source link copied: ${domain || url}`, { title: '🔗 Link Copied' })
       setTimeout(() => setCopied(false), 1500)
     })
   }

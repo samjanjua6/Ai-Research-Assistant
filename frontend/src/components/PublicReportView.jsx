@@ -3,6 +3,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ThemeToggle } from './ThemeToggle'
 import { fetchPublicReport } from '../api/client'
+import { toast } from '../context/ToastContext'
 import {
   linkifyCitations,
   countCitationFrequencies,
@@ -268,6 +269,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
     if (!report?.final_report) return
     navigator.clipboard.writeText(report.final_report).then(() => {
       setCopied(true)
+      toast.success('Full report markdown copied!', { title: '📋 Copied Report' })
       setTimeout(() => setCopied(false), 2000)
     })
   }, [report?.final_report])
@@ -277,6 +279,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
     if (!report?.summary) return
     navigator.clipboard.writeText(report.summary).then(() => {
       setCopiedSummary(true)
+      toast.success('Executive summary copied!', { title: '📋 Copied Summary' })
       setTimeout(() => setCopiedSummary(false), 1500)
     })
   }, [report?.summary])
@@ -285,6 +288,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
   const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(() => {
       setCopiedLink(true)
+      toast.success('Public report link copied to clipboard!', { title: '🔗 Link Copied' })
       setTimeout(() => setCopiedLink(false), 2000)
     })
   }, [])
@@ -292,6 +296,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
   const handleCopySourceUrl = useCallback((url, index) => {
     navigator.clipboard.writeText(url).then(() => {
       setCopiedUrlIdx(index)
+      toast.success(`Source link copied: ${extractDomain(url)}`, { title: '🔗 Copied URL' })
       setTimeout(() => setCopiedUrlIdx(null), 1500)
     })
   }, [])

@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { ThemeToggle } from './ThemeToggle'
+import { useToast } from '../context/ToastContext'
 
 export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch }) {
   const { user, logout } = useAuth()
+  const { info: toastInfo } = useToast()
   const [showAuth, setShowAuth] = useState(false)
+
+  const handleLogout = () => {
+    logout()
+    toastInfo('You have been signed out.', { title: '👋 Signed Out' })
+  }
 
   // User initials badge from first + last name
   const initials = user
@@ -68,7 +75,7 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
               </div>
               <button
                 className="btn btn-ghost btn-sm"
-                onClick={logout}
+                onClick={handleLogout}
                 title="Sign out"
               >
                 Sign Out
