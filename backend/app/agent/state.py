@@ -2,11 +2,17 @@ from typing import TypedDict, Annotated
 import operator
 
 
-class SearchResult(TypedDict):
-    step: str           # which sub-question this result answers
-    query: str          # exact search query used
-    snippet: str        # text returned by DuckDuckGo
-    url: str            # source URL
+class SearchResult(TypedDict, total=False):
+    step: str                  # which sub-question this result answers
+    query: str                 # exact search query used
+    snippet: str               # text returned by DuckDuckGo
+    url: str                   # source URL
+    score: float               # normalized relevance score (0.0 - 1.0)
+    score_percent: int         # integer relevance score (0 - 100)
+    tier: str                  # "high" | "good" | "fair" | "low"
+    domain: str                # e.g. "arxiv.org"
+    authority_label: str       # e.g. "Academic / Gov Authority"
+    signals: list[str]         # list of evaluation tags
 
 
 class GraphState(TypedDict):

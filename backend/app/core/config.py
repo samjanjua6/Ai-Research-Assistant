@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     max_steps: int = 5          # max sub-questions the planner may generate
     search_results_per_step: int = 3
 
+    # ── Source Quality & Relevance Scoring ────────────────────────
+    source_scoring_enabled: bool = True
+    source_min_relevance_score: float = 0.25
+    max_ranked_sources: int = 15
+
     # ── JWT Auth ──────────────────────────────────────────────────
     jwt_secret_key: str = "change-me-in-production-please"
     jwt_algorithm: str = "HS256"

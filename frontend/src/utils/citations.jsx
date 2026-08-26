@@ -58,7 +58,8 @@ export function linkifyCitations(text, sources = []) {
 
     return numbers
       .map((num) => {
-        const url = sources[num - 1] || ''
+        const item = sources[num - 1] || ''
+        const url = typeof item === 'string' ? item : (item?.url || '')
         const encodedUrl = encodeURIComponent(url)
         return `[cite:${num}:${encodedUrl}](#source-${num})`
       })

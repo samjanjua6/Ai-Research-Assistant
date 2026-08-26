@@ -16,6 +16,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent.state import GraphState, SearchResult
 from app.agent.tools import search_duckduckgo
+from app.agent.scoring import rank_and_filter_results, extract_clean_domain
 from app.core.config import get_settings
 from app.core.events import publish_event
 from app.core.logging import get_logger
@@ -38,26 +39,40 @@ def clean_markdown_tables(text: str) -> str:
     """
     Normalizes markdown tables in generated LLM text:
     1. Removes trailing solitary pipe lines (e.g. `\n|\n` or `\n|`)
-    2. Un-glues single-line double-pipe table rows
-    3. Auto-inserts missing header delimiter `| --- | --- |` if omitted by LLM
-    4. Ensures tables have blank lines before them so markdown parsers don't merge them with preceding paragraphs
+    2. Converts single-line fused tables into multi-line markdown tables
+    3. Normalizes table cell spacing
     """
     if not text:
-        return ""
+        return text
 
-    cleaned = text
+    # Strip empty solitary pipe lines
+    text = re.sub(r"\n\s*\|\s*\n", "\n\n", text)
+    text = re.sub(r"\n\s*\|\s*$", "\n", text)
 
-    # 1. Remove dangling trailing pipe lines
-    cleaned = re.sub(r'\n\|[ \t]*(?=\n|$)', '', cleaned)
+    # Convert inline fused tables: | col1 | col2 | | --- | --- | | val1 | val2 |
+    def expand_table_rows(match: re.Match) -> str:
+        block = match.group(0)
+        # Split on `| |` or `|  |` boundary between table rows
+        rows = re.split(r"\|\s*\|", block)
+        cleaned_rows = []
+        for r in rows:
+            r = r.strip()
+            if not r:
+                continue
+            if not r.startswith("|"):
+                r = "| " + r
+            if not r.endswith("|"):
+                r = r + " |"
+            cleaned_rows.append(r)
+        return "\n" + "\n".join(cleaned_rows) + "\n"
 
-    # 2. Un-glue double pipes between table rows
-    cleaned = re.sub(r'\|[ \t]*\|(?=[:\-])', '|\n|', cleaned)
-    cleaned = re.sub(r'\|[ \t]*\|(?=[^\n|:\-])', '|\n|', cleaned)
+    # Match consecutive pipe segments that lack newlines
+    text = re.sub(r"(?:\|[^\n\|]+)+\|\s*\|\s*(?:\|[^\n\|]+)+\|", expand_table_rows, text)
 
-    # 3. Ensure table start has a blank line before it if preceded by non-table text
-    cleaned = re.sub(r'([^\n|])\n(\|[^\n]+\|\r?\n\|[-: |]+\|)', r'\1\n\n\2', cleaned)
+    # Clean double blank lines around tables
+    text = re.sub(r"\n{3,}", "\n\n", text)
 
-    return cleaned
+    return text.strip()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -75,10 +90,11 @@ async def plan_steps(state: GraphState) -> dict[str, Any]:
     system = (
         "You are a research planning assistant. "
         "Your job is to decompose a broad research question into "
-        f"3 to {settings.max_steps} specific, self-contained sub-questions "
-        "that together cover the topic thoroughly. "
-        "Return ONLY a JSON array of strings — no prose, no markdown fences. "
-        'Example: ["sub-question 1", "sub-question 2", "sub-question 3"]'
+        f"3 to {settings.max_steps} distinct, focused sub-questions that can be answered via web search. "
+        "Each sub-question should target a specific angle (e.g., background/definition, "
+        "current state/mechanism, challenges/limitations, future outlook). "
+        "Return a JSON array of strings only. Example: [\"sub-q 1\", \"sub-q 2\", \"sub-q 3\"]"
+        "Return ONLY the JSON array, no explanation, no markdown fences."
     )
     human = f"Research question: {state['question']}"
 
@@ -94,8 +110,8 @@ async def plan_steps(state: GraphState) -> dict[str, Any]:
 
     try:
         steps: list[str] = json.loads(raw)
-        if not isinstance(steps, list):
-            raise ValueError("Expected a list")
+        if not isinstance(steps, list) or not all(isinstance(s, str) for s in steps):
+            raise ValueError("Parsed result is not a list of strings")
         steps = [str(s) for s in steps[: settings.max_steps]]
     except Exception as exc:
         logger.warning("plan_steps_parse_error", error=str(exc), raw=raw)
@@ -107,32 +123,50 @@ async def plan_steps(state: GraphState) -> dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Node 2 — search_web
+# Node 2 — search_web (with 5-Pillar Source Scoring & Ranking)
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def search_web(state: GraphState) -> dict[str, Any]:
     """
     Run a DuckDuckGo search for every step in state['steps'].
-    New results are APPENDED to state['search_results'] (operator.add).
+    Scores, ranks, and filters candidate snippets before appending.
     """
     logger.info("node:search_web", run_id=state["run_id"], loop=state.get("loop_count", 0))
 
-    new_results: list[SearchResult] = []
+    raw_candidates: list[SearchResult] = []
     for step in state["steps"]:
         results = search_duckduckgo(
             query=step,
             step=step,
             max_results=settings.search_results_per_step,
         )
-        new_results.extend(results)
+        raw_candidates.extend(results)
 
-    logger.info("search_web_done", new_results=len(new_results))
-    # Returning a list here — LangGraph adds it to existing search_results (operator.add)
-    return {"search_results": new_results}
+    # Score, rank by relevance, apply domain diversity, and filter low-quality snippets
+    if settings.source_scoring_enabled:
+        ranked_results = rank_and_filter_results(
+            raw_candidates,
+            root_question=state["question"],
+            min_score=settings.source_min_relevance_score,
+            max_results=settings.max_ranked_sources,
+        )
+    else:
+        ranked_results = raw_candidates
+
+    high_count = sum(1 for r in ranked_results if r.get("tier") == "high")
+    good_count = sum(1 for r in ranked_results if r.get("tier") == "good")
+    logger.info(
+        "search_web_scored_and_ranked",
+        raw_count=len(raw_candidates),
+        ranked_count=len(ranked_results),
+        high_quality=high_count,
+        good_quality=good_count,
+    )
+    return {"search_results": ranked_results}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Node 3 — draft_report (with real-time token streaming)
+# Node 3 — draft_report (with real-time token streaming & ranked context)
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def draft_report(state: GraphState) -> dict[str, Any]:
@@ -143,13 +177,34 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
     logger.info("node:draft_report", run_id=state["run_id"], results=len(state["search_results"]))
     llm = _get_llm()
 
-    # Build a readable context string
+    # Sort search results by relevance score descending so top sources appear first
+    sorted_results = sorted(
+        state.get("search_results", []),
+        key=lambda x: x.get("score", 0.5),
+        reverse=True,
+    )
+
+    # Build a prioritized context string
     context_parts: list[str] = []
-    for idx, r in enumerate(state["search_results"], 1):
+    for idx, r in enumerate(sorted_results, 1):
+        score_pct = r.get("score_percent")
+        tier_label = str(r.get("tier", "standard")).upper()
+        domain = r.get("domain", "")
+        auth_label = r.get("authority_label", "")
+
+        meta_header = f"[{idx}]"
+        if score_pct is not None:
+            meta_header += f" Confidence: {score_pct}% ({tier_label})"
+        if domain:
+            meta_header += f" | Domain: {domain}"
+        if auth_label:
+            meta_header += f" | {auth_label}"
+
         context_parts.append(
-            f"[{idx}] Sub-question: {r['step']}\n"
-            f"    Source: {r['url']}\n"
-            f"    Snippet: {r['snippet']}\n"
+            f"{meta_header}\n"
+            f"    Sub-topic: {r.get('step', 'General')}\n"
+            f"    Source: {r.get('url', '')}\n"
+            f"    Snippet: {r.get('snippet', '')}\n"
         )
     context = "\n".join(context_parts) or "No search results available."
 
@@ -157,6 +212,8 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
         "You are a senior research analyst. "
         "Using ONLY the provided search snippets, write a well-structured research report "
         "that directly answers the user's question. "
+        "The snippets are pre-ranked by relevance and domain credibility ([1], [2] being highest confidence). "
+        "Prioritize assertions supported by high-confidence citations. "
         "Use clear headings (##) for each sub-topic. "
         "When presenting structured comparisons or multi-dimensional summaries, use clean markdown tables. "
         "Ensure each markdown table row is placed on its own line with proper delimiters (|). "
@@ -178,20 +235,21 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
         token = str(chunk.content or "")
         if token:
             chunks.append(token)
-            publish_event(
-                run_id_str,
-                "token",
-                {
+            await publish_event(
+                run_id=run_id_str,
+                event="token",
+                data={
+                    "run_id": run_id_str,
                     "node": "draft_report",
                     "loop": loop_idx,
                     "token": token,
                 },
             )
 
-    raw_draft = "".join(chunks)
-    draft = clean_markdown_tables(raw_draft.strip())
-    logger.info("draft_report_done", draft_length=len(draft))
-    return {"draft": draft}
+    full_draft = "".join(chunks)
+    cleaned_draft = clean_markdown_tables(full_draft)
+    logger.info("draft_report_done", draft_length=len(cleaned_draft))
+    return {"draft": cleaned_draft}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -201,31 +259,30 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
 async def review_draft(state: GraphState) -> dict[str, Any]:
     """
     Self-review the draft and decide whether to loop back for more searching.
-    Returns gaps_found=True if important information is still missing AND
-    loop_count is still under the configured maximum.
     """
     loop_count = state.get("loop_count", 0)
-    logger.info("node:review_draft", run_id=state["run_id"], loop=loop_count)
+    logger.info("node:review_draft", run_id=state["run_id"], loop_count=loop_count)
 
+    # Hard stop if we have already hit max search loops
     if loop_count >= settings.max_search_loops:
-        logger.info("review_draft_max_loops_reached")
-        return {"gaps_found": False, "review_notes": "Max loops reached.", "loop_count": loop_count}
+        logger.info("review_draft_max_loops_reached", loop_count=loop_count)
+        return {"gaps_found": False, "review_notes": "Max loops reached — proceeding to finalize."}
 
     llm = _get_llm()
 
     system = (
         "You are a critical research editor. "
         "Review the draft report below against the original research question. "
-        "Identify any important topics or sub-questions that are missing, vague, or unsubstantiated. "
-        "Respond with a JSON object with two keys:\n"
-        '  "gaps_found": true or false\n'
-        '  "notes": a short description of what is missing (or "None" if complete)\n'
-        "Return ONLY valid JSON, no markdown fences."
+        "Identify if any critical angle is missing, ambiguous, or insufficiently answered. "
+        "Return a JSON object with two keys:\n"
+        '  "gaps_found": boolean (true if important information is missing and more search is needed, false if complete)\n'
+        '  "notes": brief explanation of what is missing (or why it is complete)\n'
+        "Return ONLY the JSON object, no markdown fences."
     )
     human = (
         f"Research question: {state['question']}\n\n"
         f"Draft report:\n{state['draft']}\n\n"
-        "Review:"
+        "Evaluate completeness:"
     )
 
     response = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
@@ -257,7 +314,7 @@ async def review_draft(state: GraphState) -> dict[str, Any]:
 async def finalize_report(state: GraphState) -> dict[str, Any]:
     """
     Polish the draft into a final report with a one-paragraph summary and
-    a deduplicated sources list.
+    a ranked, enriched sources list.
     """
     logger.info("node:finalize_report", run_id=state["run_id"])
     llm = _get_llm()
@@ -295,12 +352,31 @@ async def finalize_report(state: GraphState) -> dict[str, Any]:
         report = clean_markdown_tables(state["draft"])
         summary = ""
 
-    # Deduplicate sources from all search results
-    sources = list(
-        dict.fromkeys(
-            r["url"] for r in state["search_results"] if r.get("url")
-        )
+    # Deduplicate sources while preserving enriched scoring attributes
+    seen_urls: set[str] = set()
+    enriched_sources: list[dict[str, Any]] = []
+
+    sorted_results = sorted(
+        state.get("search_results", []),
+        key=lambda x: x.get("score", 0.5),
+        reverse=True,
     )
 
-    logger.info("finalize_report_done", sources=len(sources))
-    return {"final_report": report, "summary": summary, "sources": sources}
+    for r in sorted_results:
+        url = r.get("url")
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        enriched_sources.append({
+            "url": url,
+            "domain": r.get("domain") or extract_clean_domain(url),
+            "score": r.get("score_percent", 80),
+            "tier": r.get("tier", "good"),
+            "authority_label": r.get("authority_label", "Web Source"),
+            "signals": r.get("signals", []),
+            "snippet": r.get("snippet", ""),
+            "step": r.get("step", ""),
+        })
+
+    logger.info("finalize_report_done", sources=len(enriched_sources))
+    return {"final_report": report, "summary": summary, "sources": enriched_sources}

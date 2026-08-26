@@ -23,6 +23,8 @@ import {
   ExternalLink,
   ArrowUp,
   ShieldCheck,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import {
   SectionHeading,
@@ -53,7 +55,8 @@ function buildPDFDocument({ question, summary, finalReport, sources, markedFn })
   if (sources?.length) {
     linkedReport = linkedReport.replace(/\[(\d+)\]/g, (m, num) => {
       const idx = parseInt(num, 10) - 1
-      const url = sources[idx]
+      const item = sources[idx]
+      const url = typeof item === 'string' ? item : item?.url
       if (url) {
         return `[<sup>[${num}]</sup>](${url})`
       }
@@ -77,13 +80,15 @@ function buildPDFDocument({ question, summary, finalReport, sources, markedFn })
 
   const sourcesHtml = sources?.length
     ? `<div class="sources-section" id="sources">
-        <div class="section-label">Sources</div>
+        <div class="section-label">Verified Sources & Evidence Citations (${sources.length})</div>
         <ol class="sources-list">
           ${sources
-            .map(
-              (url, i) =>
-                `<li id="public-source-${i + 1}"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a></li>`
-            )
+            .map((item, i) => {
+              const url = typeof item === 'string' ? item : item?.url || ''
+              const score = typeof item === 'object' && item?.score ? ` [Relevance: ${item.score}%]` : ''
+              const auth = typeof item === 'object' && item?.authority_label ? ` • ${item.authority_label}` : ''
+              return `<li id="public-source-${i + 1}"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>${score}${auth}</li>`
+            })
             .join('')}
         </ol>
        </div>`
@@ -210,6 +215,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
   const [copiedSummary, setCopiedSummary] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedUrlIdx, setCopiedUrlIdx] = useState(null)
+  const [expandedExcerptIdx, setExpandedExcerptIdx] = useState(null)
   const [exporting, setExporting] = useState(false)
 
   // Fetch report by share token
@@ -543,35 +549,108 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                     <ShieldCheck size={14} strokeWidth={2} /> Verified Web Sources ({report.sources.length})
                   </span>
                   <ul className="sources-list-enhanced">
-                    {report.sources.map((url, i) => {
+                    {report.sources.map((item, i) => {
                       const num = i + 1
-                      const domain = extractDomain(url)
+                      const url = typeof item === 'string' ? item : item?.url || ''
+                      const domain = (typeof item === 'object' && item?.domain) ? item.domain : extractDomain(url)
+                      const score = typeof item === 'object' && item?.score ? item.score : null
+                      const tier = typeof item === 'object' ? item?.tier : null
+                      const authLabel = typeof item === 'object' ? item?.authority_label : null
+                      const snippet = typeof item === 'object' ? item?.snippet : null
+                      const signals = typeof item === 'object' && Array.isArray(item?.signals) ? item.signals : []
+                      const step = typeof item === 'object' ? item?.step : ''
                       const favicon = getFaviconUrl(url)
                       const citeCount = citationCounts[num] || 0
+                      const isExpanded = expandedExcerptIdx === i
 
                       return (
                         <li key={i} id={`public-source-${num}`} className="source-card-item">
-                          <div className="source-card-header">
-                            <span className="source-card-index">[{num}]</span>
-                            {favicon && (
-                              <img
-                                src={favicon}
-                                alt=""
-                                className="source-card-favicon"
-                                width={16}
-                                height={16}
-                                onError={(e) => { e.currentTarget.style.display = 'none' }}
-                              />
-                            )}
-                            <span className="source-card-domain">{domain}</span>
+                          <div className="source-card-header" style={{ flexWrap: 'wrap', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span className="source-card-index">[{num}]</span>
+                              {favicon && (
+                                <img
+                                  src={favicon}
+                                  alt=""
+                                  className="source-card-favicon"
+                                  width={16}
+                                  height={16}
+                                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                                />
+                              )}
+                              <span className="source-card-domain" style={{ fontWeight: 600 }}>{domain}</span>
 
-                            {citeCount > 0 && (
-                              <span className="source-cite-chip" title={`Cited ${citeCount} times in this report`}>
-                                Cited {citeCount}x
-                              </span>
-                            )}
+                              {/* Source Quality & Relevance Score Badge */}
+                              {score !== null && (
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    padding: '2px 7px',
+                                    borderRadius: 6,
+                                    backgroundColor:
+                                      score >= 80
+                                        ? 'rgba(16, 185, 129, 0.14)'
+                                        : score >= 60
+                                        ? 'rgba(6, 182, 212, 0.14)'
+                                        : 'rgba(245, 158, 11, 0.14)',
+                                    color:
+                                      score >= 80
+                                        ? '#10b981'
+                                        : score >= 60
+                                        ? '#06b6d4'
+                                        : '#f59e0b',
+                                    border: `1px solid ${
+                                      score >= 80 ? '#10b98144' : score >= 60 ? '#06b6d444' : '#f59e0b44'
+                                    }`,
+                                  }}
+                                  title={`Relevance Quality Score: ${score}% (${tier ? tier.toUpperCase() : 'QUALITY'})`}
+                                >
+                                  <Sparkles size={10} strokeWidth={2.2} />
+                                  <span>{score}% Relevance</span>
+                                </span>
+                              )}
+
+                              {/* Authority Label */}
+                              {authLabel && (
+                                <span
+                                  style={{
+                                    fontSize: '10.5px',
+                                    color: 'var(--text-dim)',
+                                    backgroundColor: 'var(--panel-alt)',
+                                    padding: '2px 6px',
+                                    borderRadius: 5,
+                                    border: '1px solid var(--border)',
+                                  }}
+                                >
+                                  {authLabel}
+                                </span>
+                              )}
+
+                              {citeCount > 0 && (
+                                <span className="source-cite-chip" title={`Cited ${citeCount} times in this report`}>
+                                  Cited {citeCount}x
+                                </span>
+                              )}
+                            </div>
 
                             <div className="source-card-actions">
+                              {snippet && (
+                                <button
+                                  type="button"
+                                  className="source-action-icon-btn"
+                                  onClick={() => setExpandedExcerptIdx(isExpanded ? null : i)}
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  title="View cited text snippet"
+                                >
+                                  {isExpanded ? <ChevronUp size={11} strokeWidth={2} /> : <ChevronDown size={11} strokeWidth={2} />}
+                                  <span>{isExpanded ? 'Hide Excerpt' : 'Excerpt'}</span>
+                                </button>
+                              )}
+
                               <button
                                 type="button"
                                 className="source-action-icon-btn"
@@ -613,6 +692,50 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                             <span>{url}</span>
                             <ExternalLink size={11} strokeWidth={2} className="source-external-icon" />
                           </a>
+
+                          {/* Expandable Cited Excerpt Drawer */}
+                          {isExpanded && snippet && (
+                            <div
+                              className="source-excerpt-drawer animate-in"
+                              style={{
+                                marginTop: 10,
+                                padding: '10px 14px',
+                                backgroundColor: 'var(--panel-alt)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 8,
+                                fontSize: '12.5px',
+                                lineHeight: 1.55,
+                              }}
+                            >
+                              {step && (
+                                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--violet)', marginBottom: 4 }}>
+                                  Sub-Topic Query: "{step}"
+                                </div>
+                              )}
+                              <div style={{ fontStyle: 'italic', color: 'var(--text)' }}>
+                                "{snippet}"
+                              </div>
+                              {signals.length > 0 && (
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                                  {signals.map((sig, sIdx) => (
+                                    <span
+                                      key={sIdx}
+                                      style={{
+                                        fontSize: '10px',
+                                        padding: '2px 6px',
+                                        borderRadius: 4,
+                                        backgroundColor: 'var(--panel)',
+                                        border: '1px solid var(--border)',
+                                        color: 'var(--text-faint)',
+                                      }}
+                                    >
+                                      ✓ {sig}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </li>
                       )
                     })}

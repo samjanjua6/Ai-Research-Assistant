@@ -1153,17 +1153,72 @@ export function AdminDashboard({ onBackToApp }) {
                   {/* Sources List */}
                   {inspectedRun.sources && inspectedRun.sources.length > 0 && (
                     <div>
-                      <h4 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 8px', color: 'var(--text)' }}>
-                        Synthesized Sources ({inspectedRun.sources.length})
+                      <h4 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 10px', color: 'var(--text)' }}>
+                        Ranked Sources & Evidence ({inspectedRun.sources.length})
                       </h4>
-                      <ul style={{ margin: 0, paddingLeft: 18, fontSize: '12.5px', color: 'var(--text-dim)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {inspectedRun.sources.map((src, idx) => (
-                          <li key={idx} style={{ wordBreak: 'break-all' }}>
-                            <a href={src} target="_blank" rel="noreferrer" style={{ color: 'var(--violet)', textDecoration: 'none' }}>
-                              {src}
-                            </a>
-                          </li>
-                        ))}
+                      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {inspectedRun.sources.map((item, idx) => {
+                          const url = typeof item === 'string' ? item : item?.url || ''
+                          const score = typeof item === 'object' && item?.score ? item.score : null
+                          const domain = typeof item === 'object' && item?.domain ? item.domain : (url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || url)
+                          const auth = typeof item === 'object' ? item?.authority_label : null
+                          return (
+                            <li
+                              key={idx}
+                              style={{
+                                padding: '8px 12px',
+                                backgroundColor: 'var(--panel)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 8,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                fontSize: '12.5px',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                                <span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>[{idx + 1}]</span>
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{
+                                    color: 'var(--text)',
+                                    fontWeight: 600,
+                                    textDecoration: 'none',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                  title={url}
+                                >
+                                  {domain}
+                                </a>
+                                {auth && (
+                                  <span style={{ fontSize: '10.5px', color: 'var(--text-dim)', backgroundColor: 'var(--panel-alt)', padding: '1px 6px', borderRadius: 4 }}>
+                                    {auth}
+                                  </span>
+                                )}
+                              </div>
+                              {score !== null && (
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    padding: '2px 7px',
+                                    borderRadius: 6,
+                                    backgroundColor: score >= 80 ? 'rgba(16, 185, 129, 0.14)' : score >= 60 ? 'rgba(6, 182, 212, 0.14)' : 'rgba(245, 158, 11, 0.14)',
+                                    color: score >= 80 ? '#10b981' : score >= 60 ? '#06b6d4' : '#f59e0b',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {score}% Relevance
+                                </span>
+                              )}
+                            </li>
+                          )
+                        })}
                       </ul>
                     </div>
                   )}
