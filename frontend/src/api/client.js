@@ -187,6 +187,19 @@ export async function deleteAccount(password) {
   return res.json()
 }
 
+export async function changePassword({ current_password, new_password }) {
+  const res = await fetch(`${BASE}/auth/password`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ current_password, new_password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json() // { access_token, token_type, user }
+}
+
 export async function fetchTerms() {
   const res = await fetch(`${BASE}/auth/terms`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)

@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, User as UserIcon } from 'lucide-react'
+import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { DeleteAccountModal } from './DeleteAccountModal'
+import { ChangePasswordModal } from './ChangePasswordModal'
 import { ThemeToggle } from './ThemeToggle'
 import { useToast } from '../context/ToastContext'
 import { Logo } from './brand/Logo'
@@ -12,6 +13,7 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
   const { info: toastInfo } = useToast()
   const [showAuth, setShowAuth] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showChangePwModal, setShowChangePwModal] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const menuRef = useRef(null)
 
@@ -145,6 +147,32 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
                   <button
                     type="button"
                     className="dropdown-item"
+                    onClick={() => {
+                      setShowUserMenu(false)
+                      setShowChangePwModal(true)
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      fontSize: '12.5px',
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <KeyRound size={13} strokeWidth={1.75} />
+                    <span>Change Password</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="dropdown-item"
                     onClick={handleLogout}
                     style={{
                       width: '100%',
@@ -209,6 +237,15 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
         <AuthModal
           onClose={() => setShowAuth(false)}
           onSuccess={() => setShowAuth(false)}
+        />
+      )}
+
+      {showChangePwModal && (
+        <ChangePasswordModal
+          onClose={() => setShowChangePwModal(false)}
+          onForgotPassword={() => {
+            setShowAuth(true)
+          }}
         />
       )}
 

@@ -118,7 +118,8 @@ def _build_otp_html(otp_code: str, user_name: str, purpose: str, expire_minutes:
     """
 
 
-def _build_password_changed_alert_html(user_name: str) -> str:
+def _build_password_changed_alert_html(user_name: str, device_hint: str = "Web Browser", time_str: str = "") -> str:
+    timestamp_display = time_str or "Just now"
     return f"""
     <!DOCTYPE html>
     <html>
@@ -132,7 +133,18 @@ def _build_password_changed_alert_html(user_name: str) -> str:
         <!-- Header -->
         <tr>
           <td style="padding: 28px 32px 20px; border-bottom: 1px solid #282b3d; text-align: left;">
-            <span style="font-size: 17px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">AI Research Assistant</span>
+            <table border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align: middle;">
+                  <div style="width: 28px; height: 28px; background: linear-gradient(135deg, #7C6AF0, #06B6D4); border-radius: 7px; text-align: center; line-height: 28px; color: #ffffff; font-weight: bold; font-size: 14px;">
+                    &loz;
+                  </div>
+                </td>
+                <td style="vertical-align: middle; padding-left: 10px;">
+                  <span style="font-size: 17px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">AI Research Assistant</span>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
         
@@ -147,15 +159,30 @@ def _build_password_changed_alert_html(user_name: str) -> str:
               The password for your AI Research Assistant account was successfully changed.
             </p>
 
-            <div style="margin: 20px 0; padding: 14px 18px; background-color: #1c1427; border-left: 3px solid #10b981; border-radius: 6px;">
-              <p style="margin: 0; font-size: 13.5px; color: #e2e8f0; line-height: 1.5;">
-                If you made this change, no further action is needed.
+            <div style="margin: 20px 0; padding: 14px 18px; background-color: #1a1528; border-left: 3px solid #10b981; border-radius: 6px;">
+              <p style="margin: 0 0 6px; font-size: 13.5px; color: #e2e8f0; line-height: 1.4;">
+                <strong>Device / Client:</strong> {device_hint}
+              </p>
+              <p style="margin: 0; font-size: 12.5px; color: #94a3b8; line-height: 1.4;">
+                <strong>Timestamp:</strong> {timestamp_display} (UTC)
               </p>
             </div>
 
-            <p style="margin: 0; font-size: 13px; color: #ef4444; line-height: 1.5;">
-              If you did not make this change, please reset your password immediately or contact support.
+            <p style="margin: 0 0 16px; font-size: 13px; color: #94a3b8; line-height: 1.5;">
+              If you made this change, you can safely ignore this email.
             </p>
+
+            <div style="margin: 20px 0; padding: 14px 18px; background-color: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px;">
+              <p style="margin: 0 0 10px; font-size: 13px; color: #ef4444; font-weight: 600;">
+                Did not request this change?
+              </p>
+              <p style="margin: 0 0 12px; font-size: 12.5px; color: #f87171; line-height: 1.5;">
+                Your account credentials may be compromised. Please reset your password immediately.
+              </p>
+              <a href="https://research.mychatbot.codes" target="_blank" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; font-size: 12.5px; font-weight: 700; padding: 8px 18px; border-radius: 6px;">
+                Secure My Account &rarr;
+              </a>
+            </div>
           </td>
         </tr>
 
@@ -272,20 +299,27 @@ async def send_brevo_otp(to_email: str, otp_code: str, user_name: str = "there",
     return False
 
 
-async def send_password_changed_security_alert(to_email: str, user_name: str = "there") -> bool:
+async def send_password_changed_security_alert(
+    to_email: str,
+    user_name: str = "there",
+    device_hint: str = "Web Browser",
+    time_str: str = "",
+) -> bool:
     """
     Sends a security alert email notifying the user that their password was changed.
     """
     subject = "Security Alert: Password Changed for AI Research Assistant"
-    html_content = _build_password_changed_alert_html(user_name)
+    html_content = _build_password_changed_alert_html(user_name, device_hint=device_hint, time_str=time_str)
     text_content = (
-        f"Hi {user_name},\n\nYour password for AI Research Assistant was changed successfully.\n\n"
+        f"Hi {user_name},\n\nYour password for AI Research Assistant was changed successfully.\n"
+        f"Device / Client: {device_hint}\n"
+        f"Timestamp: {time_str or 'Just now'} UTC\n\n"
         "If you did not perform this action, please reset your password immediately."
     )
 
     try:
         await asyncio.to_thread(_send_smtp_sync, to_email, subject, html_content, text_content)
-        logger.info("password_changed_alert_sent", email=to_email)
+        logger.info("password_changed_alert_sent", email=to_email, device=device_hint)
         return True
     except Exception as exc:
         logger.warning("password_changed_alert_failed", email=to_email, error=str(exc))

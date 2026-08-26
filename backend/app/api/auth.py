@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -142,6 +142,18 @@ class ResetPasswordRequest(BaseModel):
         v = v.strip()
         if len(v) != 6 or not v.isdigit():
             raise ValueError("Verification code must be exactly 6 digits.")
+        return v
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("New password must be at least 8 characters long.")
         return v
 
 
@@ -615,6 +627,56 @@ async def export_user_data(
 ):
     """Generates a complete JSON backup archive of all user research data."""
     return await get_user_export_data(db, current_user)
+
+
+@router.patch("/password", response_model=AuthResponse)
+async def change_password(
+    body: ChangePasswordRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Updates the authenticated user's password.
+    Validates the current password, enforces minimum strength and novelty,
+    dispatches a device-aware security alert email, and returns a refreshed JWT session.
+    """
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password. Please verify your current password and try again.",
+        )
+
+    if body.current_password == body.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password cannot be the same as your current password.",
+        )
+
+    # Update password hash in database
+    await update_user_password(
+        db,
+        user=current_user,
+        hashed_password=hash_password(body.new_password),
+    )
+
+    # Extract user agent / client device info
+    user_agent = request.headers.get("user-agent", "Web Browser")
+    time_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    # Dispatch security alert email via Brevo SMTP in background
+    background_tasks.add_task(
+        send_password_changed_security_alert,
+        to_email=current_user.email,
+        user_name=current_user.name,
+        device_hint=user_agent[:80] if user_agent else "Web Browser",
+        time_str=time_str,
+    )
+
+    # Issue fresh JWT token for seamless session continuation
+    token = create_access_token(current_user.id, current_user.email)
+    return AuthResponse(access_token=token, user=_user_response(current_user))
 
 
 @router.delete("/account")

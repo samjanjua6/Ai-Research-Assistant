@@ -13,6 +13,7 @@ import {
   fetchAccountSummary as apiFetchAccountSummary,
   exportUserData as apiExportUserData,
   deleteAccount as apiDeleteAccount,
+  changePassword as apiChangePassword,
   getToken,
   setToken,
   clearToken,
@@ -100,6 +101,13 @@ export function AuthProvider({ children }) {
     return res
   }, [])
 
+  const changePassword = useCallback(async ({ current_password, new_password }) => {
+    const data = await apiChangePassword({ current_password, new_password })
+    setToken(data.access_token)
+    setUser(data.user)
+    return data.user
+  }, [])
+
   // ── direct signup fallback ────────────────────────────────────
   const signup = useCallback(async ({ name, email, password, terms_accepted }) => {
     const data = await apiSignup({ name, email, password, terms_accepted })
@@ -129,6 +137,7 @@ export function AuthProvider({ children }) {
     fetchAccountSummary,
     exportUserData,
     deleteAccount,
+    changePassword,
     logout,
   }
 
