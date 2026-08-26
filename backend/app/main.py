@@ -14,6 +14,7 @@ from sqlalchemy import text
 
 from app.api.routes import router as research_router, public_router
 from app.api.auth import router as auth_router
+from app.api.admin import router as admin_router
 from app.core.config import get_settings
 from app.core.logging import setup_logging, get_logger
 from app.db.crud import get_run_by_share_token
@@ -42,6 +43,22 @@ async def lifespan(app: FastAPI):
         await conn.execute(
             text(
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT TRUE;"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) NOT NULL DEFAULT 'user';"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;"
+            )
+        )
+        # Auto-promote initial admin account
+        await conn.execute(
+            text(
+                "UPDATE users SET role = 'admin', is_admin = TRUE WHERE LOWER(email) = 'samjanjua6@gmail.com';"
             )
         )
         await conn.execute(
@@ -95,6 +112,7 @@ app.add_middleware(
 
 # ── API routes ────────────────────────────────────────────────────
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(research_router)
 app.include_router(public_router)
 

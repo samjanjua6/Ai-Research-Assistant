@@ -13,6 +13,7 @@ import ReportPanel      from './components/ReportPanel'
 import Placeholder      from './components/Placeholder'
 import PublicReportView from './components/PublicReportView'
 import LiveDraftPreview from './components/LiveDraftPreview'
+import { AdminDashboard } from './components/admin/AdminDashboard'
 import { ErrorStateIllustration, EmptyState } from './components/illustrations/EmptyStateIllustrations'
 import { LogoMark } from './components/brand/Logo'
 
@@ -20,6 +21,15 @@ function getShareTokenFromPath() {
   if (typeof window === 'undefined') return null
   const match = window.location.pathname.match(/^\/r\/([a-zA-Z0-9_-]+)/)
   return match ? match[1] : null
+}
+
+function getIsAdminPath() {
+  if (typeof window === 'undefined') return false
+  return (
+    window.location.pathname === '/admin' ||
+    window.location.pathname.startsWith('/admin/') ||
+    window.location.search.includes('view=admin')
+  )
 }
 
 function getMagicResetParams() {
@@ -60,6 +70,7 @@ export default function App() {
   } = useResearch(user)
 
   const [shareToken,          setShareToken]          = useState(getShareTokenFromPath)
+  const [isAdminView,         setIsAdminView]         = useState(getIsAdminPath)
   const [magicReset,          setMagicReset]          = useState(getMagicResetParams)
   const [isSidebarCollapsed,  setIsSidebarCollapsed]  = useState(getInitialSidebarState)
   const [activeRunId,         setActiveRunId]         = useState(null)
@@ -117,6 +128,7 @@ export default function App() {
   useEffect(() => {
     const handlePopState = () => {
       setShareToken(getShareTokenFromPath())
+      setIsAdminView(getIsAdminPath())
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
@@ -200,6 +212,18 @@ export default function App() {
     )
   }
 
+  // If visiting admin dashboard (/admin)
+  if (isAdminView) {
+    return (
+      <AdminDashboard
+        onBackToApp={() => {
+          setIsAdminView(false)
+          window.history.pushState({}, '', '/')
+        }}
+      />
+    )
+  }
+
   const isLoading  = phase === 'streaming'
   const hasRun     = phase !== 'idle' || steps.length > 0 || report !== null
   const showReport = phase === 'done' && report
@@ -222,6 +246,10 @@ export default function App() {
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={handleToggleSidebar}
         onNewResearch={handleNewResearch}
+        onOpenAdmin={() => {
+          setIsAdminView(true)
+          window.history.pushState({}, '', '/admin')
+        }}
       />
 
       {/* Mobile drawer backdrop when sidebar is open on screens < 1100px */}

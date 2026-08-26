@@ -45,6 +45,8 @@ class User(Base):
         DateTime(timezone=True), nullable=False, default=_now
     )
     terms_version: Mapped[str] = mapped_column(String(20), nullable=False, default="v1.0")
+    role: Mapped[str] = mapped_column(String(50), nullable=False, default="user")
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now
     )

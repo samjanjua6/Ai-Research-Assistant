@@ -199,6 +199,8 @@ class UserResponse(BaseModel):
     id: str
     name: str
     email: str
+    role: str = "user"
+    is_admin: bool = False
     created_at: str
 
     class Config:
@@ -214,11 +216,15 @@ class AuthResponse(BaseModel):
 # ── Helper ────────────────────────────────────────────────────────
 
 def _user_response(user: User) -> UserResponse:
+    user_role = getattr(user, "role", "user") or "user"
+    user_is_admin = getattr(user, "is_admin", False) or (user_role == "admin") or (user.email.lower() == "samjanjua6@gmail.com")
     return UserResponse(
         id=str(user.id),
         name=user.name,
         email=user.email,
-        created_at=user.created_at.isoformat(),
+        role="admin" if user_is_admin else user_role,
+        is_admin=user_is_admin,
+        created_at=user.created_at.isoformat() if user.created_at else "",
     )
 
 

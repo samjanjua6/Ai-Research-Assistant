@@ -66,3 +66,22 @@ async def get_current_user(
         )
 
     return user
+
+
+async def get_admin_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """
+    Dependency that enforces administrator role access.
+    """
+    user_role = getattr(current_user, "role", "user") or "user"
+    user_is_admin = getattr(current_user, "is_admin", False) or (user_role == "admin") or (current_user.email.lower() == "samjanjua6@gmail.com")
+
+    if not user_is_admin and user_role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator access required. You do not have permission to access this resource.",
+        )
+
+    return current_user
+

@@ -8,7 +8,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { useToast } from '../context/ToastContext'
 import { Logo } from './brand/Logo'
 
-export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch }) {
+export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch, onOpenAdmin }) {
   const { user, logout } = useAuth()
   const { info: toastInfo } = useToast()
   const [showAuth, setShowAuth] = useState(false)
@@ -16,6 +16,8 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
   const [showChangePwModal, setShowChangePwModal] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const menuRef = useRef(null)
+
+  const isAdmin = user && (user.is_admin || user.role === 'admin' || user.email?.toLowerCase() === 'samjanjua6@gmail.com')
 
   // Close dropdown menu on outside click
   useEffect(() => {
@@ -143,6 +145,36 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
                       {user.email}
                     </div>
                   </div>
+
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="dropdown-item"
+                      onClick={() => {
+                        setShowUserMenu(false)
+                        onOpenAdmin?.()
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        padding: '7px 10px',
+                        borderRadius: 6,
+                        fontSize: '12.5px',
+                        color: 'var(--violet)',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        cursor: 'pointer',
+                        marginBottom: 2,
+                      }}
+                    >
+                      <ShieldCheck size={13} strokeWidth={2.2} />
+                      <span>Admin Studio</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"

@@ -301,3 +301,93 @@ export function openStream(runId, { onStep, onToken, onDone, onError }) {
 
   return () => es.close()
 }
+
+// ── Admin API ─────────────────────────────────────────────────────
+
+export async function fetchAdminOverview() {
+  const res = await fetch(`${BASE}/admin/overview`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function fetchAdminUsers({ search = '', limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams({ limit, offset })
+  if (search) params.append('search', search)
+
+  const res = await fetch(`${BASE}/admin/users?${params.toString()}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function updateUserRole(userId, role) {
+  const res = await fetch(`${BASE}/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ role }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function adminDeleteUser(userId) {
+  const res = await fetch(`${BASE}/admin/users/${userId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function fetchAdminRuns({ search = '', status = '', limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams({ limit, offset })
+  if (search) params.append('search', search)
+  if (status && status !== 'all') params.append('status_filter', status)
+
+  const res = await fetch(`${BASE}/admin/runs?${params.toString()}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function fetchAdminRunDetail(runId) {
+  const res = await fetch(`${BASE}/admin/runs/${runId}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function fetchAdminServerMetrics() {
+  const res = await fetch(`${BASE}/admin/server-metrics`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
