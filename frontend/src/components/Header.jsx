@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Sparkles, Plus, LogOut, PanelLeft } from 'lucide-react'
+import { Plus, LogOut, PanelLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { ThemeToggle } from './ThemeToggle'
 import { useToast } from '../context/ToastContext'
+import { Logo } from './brand/Logo'
 
 export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch }) {
   const { user, logout } = useAuth()
@@ -41,11 +42,8 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
             </button>
           )}
 
-          <div className="topbar-brand">
-            <span className="topbar-mark">
-              <Sparkles size={15} strokeWidth={2.2} />
-            </span>
-            Research Assistant
+          <div className="topbar-brand" onClick={onNewResearch} style={{ cursor: 'pointer' }}>
+            <Logo size={24} />
           </div>
 
           {isSidebarCollapsed && onNewResearch && (

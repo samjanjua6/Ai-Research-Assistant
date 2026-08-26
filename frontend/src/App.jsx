@@ -14,6 +14,7 @@ import Placeholder      from './components/Placeholder'
 import PublicReportView from './components/PublicReportView'
 import LiveDraftPreview from './components/LiveDraftPreview'
 import { ErrorStateIllustration, EmptyState } from './components/illustrations/EmptyStateIllustrations'
+import { LogoMark } from './components/brand/Logo'
 
 function getShareTokenFromPath() {
   if (typeof window === 'undefined') return null
@@ -191,9 +192,7 @@ export default function App() {
     return (
       <div className="auth-splash">
         <div className="auth-splash-inner">
-          <span className="topbar-mark">
-            <Sparkles size={18} strokeWidth={2} />
-          </span>
+          <LogoMark size={32} />
           <p>Checking session…</p>
         </div>
       </div>

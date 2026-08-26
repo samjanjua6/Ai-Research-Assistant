@@ -34,6 +34,7 @@ import {
   ReportNotFoundIllustration,
   EmptyState,
 } from './illustrations/EmptyStateIllustrations'
+import { Logo, LogoMark } from './brand/Logo'
 
 function normalizeMarkdown(text) {
   return normalizeMarkdownTables(text || '')
@@ -376,17 +377,15 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
       {/* ── Public Topbar ── */}
       <div className="topbar">
         <div className="topbar-brand" onClick={onGoHome} style={{ cursor: 'pointer' }}>
-          <span className="topbar-mark">
-            <Sparkles size={15} strokeWidth={2.2} />
-          </span>
-          Research Assistant
+          <Logo size={24} />
         </div>
 
         <div className="topbar-right">
           <span className="topbar-badge">Public Report</span>
           <ThemeToggle />
           <button className="btn btn-primary btn-sm" onClick={onGoHome} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Sparkles size={13} strokeWidth={2} /> Open Assistant
+            <LogoMark size={14} />
+            <span>Open Assistant</span>
           </button>
         </div>
       </div>
@@ -396,9 +395,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
         {loading && (
           <div className="auth-splash" style={{ minHeight: '60vh' }}>
             <div className="auth-splash-inner">
-              <span className="topbar-mark">
-                <Sparkles size={18} strokeWidth={2} />
-              </span>
+              <LogoMark size={32} />
               <p>Loading research report…</p>
             </div>
           </div>
@@ -627,9 +624,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
             {/* Bottom Callout Banner */}
             <div className="public-cta-banner card" style={{ marginTop: '24px' }}>
               <div className="public-cta-content">
-                <span className="topbar-mark" style={{ width: '36px', height: '36px' }}>
-                  <Sparkles size={18} strokeWidth={2} />
-                </span>
+                <LogoMark size={36} />
                 <div>
                   <h4 style={{ fontSize: '15px', fontWeight: 600 }}>Explore any topic with AI Research Assistant</h4>
                   <p style={{ fontSize: '13px', color: 'var(--text-dim)', marginTop: '2px' }}>
