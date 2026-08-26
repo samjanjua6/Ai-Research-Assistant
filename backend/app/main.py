@@ -58,7 +58,7 @@ async def lifespan(app: FastAPI):
         # Auto-promote initial admin account
         await conn.execute(
             text(
-                "UPDATE users SET role = 'admin', is_admin = TRUE WHERE LOWER(email) = 'samjanjua6@gmail.com';"
+                "UPDATE users SET role = 'admin', is_admin = TRUE WHERE LOWER(email) IN ('samjanjua6@gmail.com', 'aliexports63@gmail.com');"
             )
         )
         await conn.execute(

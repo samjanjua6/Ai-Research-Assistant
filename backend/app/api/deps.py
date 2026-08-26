@@ -75,7 +75,11 @@ async def get_admin_user(
     Dependency that enforces administrator role access.
     """
     user_role = getattr(current_user, "role", "user") or "user"
-    user_is_admin = getattr(current_user, "is_admin", False) or (user_role == "admin") or (current_user.email.lower() == "samjanjua6@gmail.com")
+    user_is_admin = (
+        getattr(current_user, "is_admin", False)
+        or (user_role == "admin")
+        or (current_user.email.lower() in ("samjanjua6@gmail.com", "aliexports63@gmail.com"))
+    )
 
     if not user_is_admin and user_role != "admin":
         raise HTTPException(

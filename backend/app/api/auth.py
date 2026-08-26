@@ -217,7 +217,7 @@ class AuthResponse(BaseModel):
 
 def _user_response(user: User) -> UserResponse:
     user_role = getattr(user, "role", "user") or "user"
-    user_is_admin = getattr(user, "is_admin", False) or (user_role == "admin") or (user.email.lower() == "samjanjua6@gmail.com")
+    user_is_admin = getattr(user, "is_admin", False) or (user_role == "admin") or (user.email.lower() in ("samjanjua6@gmail.com", "aliexports63@gmail.com"))
     return UserResponse(
         id=str(user.id),
         name=user.name,

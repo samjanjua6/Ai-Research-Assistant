@@ -17,7 +17,11 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
   const [showUserMenu, setShowUserMenu] = useState(false)
   const menuRef = useRef(null)
 
-  const isAdmin = user && (user.is_admin || user.role === 'admin' || user.email?.toLowerCase() === 'samjanjua6@gmail.com')
+  const isAdmin =
+    user &&
+    (user.is_admin ||
+      user.role === 'admin' ||
+      ['samjanjua6@gmail.com', 'aliexports63@gmail.com'].includes(user.email?.toLowerCase()))
 
   // Close dropdown menu on outside click
   useEffect(() => {
