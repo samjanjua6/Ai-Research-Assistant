@@ -12,6 +12,7 @@ import ReportPanel      from './components/ReportPanel'
 import Placeholder      from './components/Placeholder'
 import PublicReportView from './components/PublicReportView'
 import LiveDraftPreview from './components/LiveDraftPreview'
+import { ErrorStateIllustration, EmptyState } from './components/illustrations/EmptyStateIllustrations'
 
 function getShareTokenFromPath() {
   if (typeof window === 'undefined') return null
@@ -311,6 +312,26 @@ export default function App() {
               question={activeQuestion}
               runId={currentRunId}
             />
+          )}
+
+          {/* Error Recovery Card */}
+          {phase === 'error' && (
+            <div className="card animate-in" style={{ textAlign: 'center', padding: '32px 20px' }}>
+              <EmptyState
+                illustration={<ErrorStateIllustration size={100} />}
+                title="Research Encountered an Issue"
+                description={error || "The research run failed to complete. You can retry with the same question or modify your query."}
+                action={
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => handleSubmit(activeQuestion || formQuestion)}
+                  >
+                    🔄 Retry Research Run
+                  </button>
+                }
+              />
+            </div>
           )}
 
           {/* Empty state with suggestions */}

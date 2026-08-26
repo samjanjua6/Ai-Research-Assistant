@@ -16,6 +16,7 @@ import {
   TableBlock,
   normalizeMarkdownTables,
 } from '../utils/sectionUtils'
+import { NoSourcesIllustration } from './illustrations/EmptyStateIllustrations'
 
 function normalizeMarkdown(text) {
   return normalizeMarkdownTables(text || '')
@@ -409,7 +410,7 @@ export default function ReportPanel({ report, question, runId }) {
         </Markdown>
       </div>
 
-      {report.sources?.length > 0 && (
+      {report.sources?.length > 0 ? (
         <div className="sources-section" id="sourcesSection">
           <div className="sources-header-row">
             <span className="eyebrow">Verified Sources ({report.sources.length})</span>
@@ -482,6 +483,11 @@ export default function ReportPanel({ report, question, runId }) {
               )
             })}
           </ul>
+        </div>
+      ) : (
+        <div className="sources-section-empty">
+          <NoSourcesIllustration size={50} />
+          <span>No external web citations were required for this synthesis report.</span>
         </div>
       )}
 

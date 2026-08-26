@@ -17,6 +17,10 @@ import {
   TableBlock,
   normalizeMarkdownTables,
 } from '../utils/sectionUtils'
+import {
+  ReportNotFoundIllustration,
+  EmptyState,
+} from './illustrations/EmptyStateIllustrations'
 
 function normalizeMarkdown(text) {
   return normalizeMarkdownTables(text || '')
@@ -392,18 +396,16 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
 
         {error && (
           <div className="card public-error-card">
-            <div className="placeholder-icon-badge" style={{ margin: '0 auto 16px' }}>
-              🔒
-            </div>
-            <h3 className="placeholder-title">Report Unavailable</h3>
-            <p className="placeholder-desc">
-              This research report either does not exist or has been made private by its author.
-            </p>
-            <div style={{ marginTop: '20px' }}>
-              <button className="btn btn-primary" onClick={onGoHome}>
-                ← Go to Research Assistant
-              </button>
-            </div>
+            <EmptyState
+              illustration={<ReportNotFoundIllustration size={110} />}
+              title="Report Unavailable or Private"
+              description="This research report either does not exist or has been made private by its author."
+              action={
+                <button className="btn btn-primary" onClick={onGoHome}>
+                  ← Go to Research Assistant
+                </button>
+              }
+            />
           </div>
         )}
 

@@ -1,3 +1,5 @@
+import { WelcomeHeroIllustration } from './illustrations/EmptyStateIllustrations'
+
 const SUGGESTIONS = [
   {
     icon: '⚡',
@@ -25,7 +27,7 @@ export default function Placeholder({ onSelectSuggestion }) {
   return (
     <div className="placeholder card">
       <div className="placeholder-hero">
-        <div className="placeholder-icon-badge">🔬</div>
+        <WelcomeHeroIllustration />
         <h2 className="placeholder-title">Autonomous Deep Research Assistant</h2>
         <p className="placeholder-desc">
           Powered by LangGraph multi-step planning, real-time web search, iterative self-review, and citation verification.

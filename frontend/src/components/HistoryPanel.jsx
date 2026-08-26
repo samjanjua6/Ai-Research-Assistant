@@ -1,4 +1,9 @@
 import { useState, useMemo, useCallback } from 'react'
+import {
+  NoRunsIllustration,
+  NoMatchesIllustration,
+  EmptyState,
+} from './illustrations/EmptyStateIllustrations'
 
 function renderHighlightedText(text, words) {
   if (!words.length || !text) return text
@@ -143,21 +148,60 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun,
 
       {/* Stack of Run Cards */}
       {runs.length === 0 ? (
-        <p className="history-empty">No runs yet.</p>
+        <EmptyState
+          illustration={<NoRunsIllustration size={80} />}
+          title="No research runs yet"
+          description="Your past research queries will appear here."
+          className="history-empty-card"
+        >
+          {onRetry && (
+            <div className="sidebar-empty-prompts">
+              <span className="sidebar-empty-prompt-label">Quick research topics:</span>
+              <div className="sidebar-empty-chips">
+                <button
+                  type="button"
+                  className="sidebar-starter-chip"
+                  onClick={() => onRetry('What are the latest breakthroughs and commercialization milestones for solid-state batteries in 2026?')}
+                >
+                  <span>⚡</span> Batteries
+                </button>
+                <button
+                  type="button"
+                  className="sidebar-starter-chip"
+                  onClick={() => onRetry('What is the current status and roadmap of private commercial fusion energy ventures?')}
+                >
+                  <span>🚀</span> Fusion
+                </button>
+                <button
+                  type="button"
+                  className="sidebar-starter-chip"
+                  onClick={() => onRetry('What are the latest breakthroughs in fault-tolerant quantum computing architectures?')}
+                >
+                  <span>🔬</span> Quantum
+                </button>
+              </div>
+            </div>
+          )}
+        </EmptyState>
       ) : filteredRuns.length === 0 ? (
-        <div className="history-no-matches">
-          <p>No research runs match your search.</p>
-          <button
-            type="button"
-            className="link-btn"
-            onClick={() => {
-              setSearchQuery('')
-              setStatusFilter('all')
-            }}
-          >
-            Clear filters
-          </button>
-        </div>
+        <EmptyState
+          illustration={<NoMatchesIllustration size={70} />}
+          title="No matching runs"
+          description="Try adjusting your keyword search or status filter."
+          className="history-empty-card"
+          action={
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                setSearchQuery('')
+                setStatusFilter('all')
+              }}
+            >
+              Clear filters
+            </button>
+          }
+        />
       ) : (
         <div className="history-stack">
           {filteredRuns.map((run) => {
