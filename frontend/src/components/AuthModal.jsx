@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { TermsModal } from './TermsModal'
+import { OtpInput } from './OtpInput'
 
 /**
- * AuthModal — Sign In / Create Account tabs.
+ * AuthModal — Sign In / Create Account tabs with Email OTP verification.
  *
  * Props:
  *   onClose()           — called when modal is dismissed
@@ -12,9 +13,10 @@ import { TermsModal } from './TermsModal'
  *   defaultTab          — 'login' | 'signup'
  */
 export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
-  const { login, signup } = useAuth()
-  const { success: toastSuccess } = useToast()
+  const { login, sendSignupOtp, verifyOtpAndSignup, resendOtp } = useAuth()
+  const { success: toastSuccess, info: toastInfo, error: toastError } = useToast()
   const [tab, setTab] = useState(defaultTab)
+  const [signupStep, setSignupStep] = useState('form') // 'form' | 'otp'
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('')
@@ -50,29 +52,77 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
     }
   }
 
-  // ── Signup submit ────────────────────────────────────────────
-  async function handleSignup(e) {
+  // ── Step 1: Send Signup OTP ──────────────────────────────────
+  async function handleSendSignupOtp(e) {
     e.preventDefault()
     if (!termsAccepted) {
       setError('You must accept the Terms of Service to create an account.')
       return
     }
+    if (signupPassword.length < 8) {
+      setError('Password must be at least 8 characters long.')
+      return
+    }
+
     setLoading(true)
     clearError()
     try {
-      const user = await signup({
+      await sendSignupOtp({
         name: signupName,
         email: signupEmail,
-        password: signupPassword,
-        terms_accepted: termsAccepted,
       })
-      toastSuccess(`Account created! Welcome, ${user.name}!`, { title: '🎉 Account Created' })
-      onSuccess?.(user)
+      setSignupStep('otp')
+      toastInfo(`Verification code sent to ${signupEmail}`, { title: '📬 Check Your Email' })
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  // ── Step 2: Verify OTP & Complete Signup ──────────────────────
+  async function handleVerifyOtp(otpCode) {
+    setLoading(true)
+    clearError()
+    try {
+      const user = await verifyOtpAndSignup({
+        name: signupName,
+        email: signupEmail,
+        password: signupPassword,
+        terms_accepted: termsAccepted,
+        otp: otpCode,
+      })
+      toastSuccess(`Account created & email verified! Welcome, ${user.name}!`, {
+        title: '🎉 Account Created',
+      })
+      onSuccess?.(user)
+    } catch (err) {
+      setError(err.message)
+      toastError(err.message || 'Invalid verification code', { title: '❌ Verification Failed' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── Resend OTP ───────────────────────────────────────────────
+  async function handleResendOtp() {
+    clearError()
+    try {
+      await resendOtp({
+        name: signupName,
+        email: signupEmail,
+      })
+      toastInfo(`New verification code sent to ${signupEmail}`, { title: '📬 Code Resent' })
+    } catch (err) {
+      setError(err.message)
+      toastError(err.message, { title: '❌ Resend Failed' })
+    }
+  }
+
+  const handleTabChange = (newTab) => {
+    setTab(newTab)
+    setSignupStep('form')
+    clearError()
   }
 
   return (
@@ -88,32 +138,42 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
           {/* Header */}
           <div className="modal-header">
             <h2 className="modal-title">
-              {tab === 'login' ? 'Welcome back' : 'Create your account'}
+              {tab === 'login'
+                ? 'Welcome back'
+                : signupStep === 'otp'
+                ? 'Verify Email'
+                : 'Create your account'}
             </h2>
-            <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
-          </div>
-
-          {/* Tabs */}
-          <div className="auth-tabs">
-            <button
-              className={`auth-tab ${tab === 'login' ? 'active' : ''}`}
-              onClick={() => { setTab('login'); clearError() }}
-            >
-              Sign In
-            </button>
-            <button
-              className={`auth-tab ${tab === 'signup' ? 'active' : ''}`}
-              onClick={() => { setTab('signup'); clearError() }}
-            >
-              Create Account
+            <button className="modal-close" onClick={onClose} aria-label="Close">
+              ✕
             </button>
           </div>
 
-          {/* Error banner */}
-          {error && (
+          {/* Tabs (only visible on step 1) */}
+          {signupStep === 'form' && (
+            <div className="auth-tabs">
+              <button
+                className={`auth-tab ${tab === 'login' ? 'active' : ''}`}
+                onClick={() => handleTabChange('login')}
+              >
+                Sign In
+              </button>
+              <button
+                className={`auth-tab ${tab === 'signup' ? 'active' : ''}`}
+                onClick={() => handleTabChange('signup')}
+              >
+                Create Account
+              </button>
+            </div>
+          )}
+
+          {/* Error banner (on form view) */}
+          {error && signupStep === 'form' && (
             <div className="auth-error" role="alert">
               <span>⚠ {error}</span>
-              <button className="auth-error-dismiss" onClick={clearError}>✕</button>
+              <button className="auth-error-dismiss" onClick={clearError}>
+                ✕
+              </button>
             </div>
           )}
 
@@ -121,7 +181,9 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
           {tab === 'login' && (
             <form className="auth-form" onSubmit={handleLogin}>
               <div className="form-group">
-                <label className="form-label" htmlFor="login-email">Email address</label>
+                <label className="form-label" htmlFor="login-email">
+                  Email address
+                </label>
                 <input
                   id="login-email"
                   className="form-input"
@@ -135,7 +197,9 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="login-password">Password</label>
+                <label className="form-label" htmlFor="login-password">
+                  Password
+                </label>
                 <div className="input-with-toggle">
                   <input
                     id="login-password"
@@ -164,18 +228,24 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
 
               <p className="auth-switch">
                 Don&apos;t have an account?{' '}
-                <button type="button" className="link-btn" onClick={() => { setTab('signup'); clearError() }}>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => handleTabChange('signup')}
+                >
                   Create one
                 </button>
               </p>
             </form>
           )}
 
-          {/* ── Signup form ── */}
-          {tab === 'signup' && (
-            <form className="auth-form" onSubmit={handleSignup}>
+          {/* ── Signup: Step 1 (Details Form) ── */}
+          {tab === 'signup' && signupStep === 'form' && (
+            <form className="auth-form" onSubmit={handleSendSignupOtp}>
               <div className="form-group">
-                <label className="form-label" htmlFor="signup-name">Full name</label>
+                <label className="form-label" htmlFor="signup-name">
+                  Full name
+                </label>
                 <input
                   id="signup-name"
                   className="form-input"
@@ -189,7 +259,9 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="signup-email">Email address</label>
+                <label className="form-label" htmlFor="signup-email">
+                  Email address
+                </label>
                 <input
                   id="signup-email"
                   className="form-input"
@@ -255,16 +327,35 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
                 type="submit"
                 disabled={loading || !termsAccepted}
               >
-                {loading ? 'Creating account…' : 'Create Account'}
+                {loading ? 'Sending verification code…' : 'Continue →'}
               </button>
 
               <p className="auth-switch">
                 Already have an account?{' '}
-                <button type="button" className="link-btn" onClick={() => { setTab('login'); clearError() }}>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => handleTabChange('login')}
+                >
                   Sign in
                 </button>
               </p>
             </form>
+          )}
+
+          {/* ── Signup: Step 2 (OTP Verification) ── */}
+          {tab === 'signup' && signupStep === 'otp' && (
+            <OtpInput
+              email={signupEmail}
+              onVerify={handleVerifyOtp}
+              onResend={handleResendOtp}
+              onBack={() => {
+                setSignupStep('form')
+                clearError()
+              }}
+              loading={loading}
+              error={error}
+            />
           )}
         </div>
       </div>
@@ -274,3 +365,5 @@ export function AuthModal({ onClose, onSuccess, defaultTab = 'login' }) {
     </>
   )
 }
+
+export default AuthModal

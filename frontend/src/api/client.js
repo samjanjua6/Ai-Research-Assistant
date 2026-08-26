@@ -27,6 +27,45 @@ function authHeaders() {
 
 // ── Auth endpoints ─────────────────────────────────────────────────
 
+export async function sendSignupOtp({ name, email }) {
+  const res = await fetch(`${BASE}/auth/send-signup-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function verifyOtpAndSignup({ name, email, password, terms_accepted, otp }) {
+  const res = await fetch(`${BASE}/auth/verify-otp-and-signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password, terms_accepted, otp }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json() // { access_token, token_type, user }
+}
+
+export async function resendOtp({ name, email }) {
+  const res = await fetch(`${BASE}/auth/resend-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
 export async function signup({ name, email, password, terms_accepted }) {
   const res = await fetch(`${BASE}/auth/signup`, {
     method: 'POST',

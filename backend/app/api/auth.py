@@ -7,22 +7,91 @@ Authentication endpoints:
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
+from app.core.email import generate_otp, send_brevo_otp
 from app.core.security import create_access_token, hash_password, verify_password
-from app.db.crud import create_user, get_user_by_email
+from app.db.crud import (
+    create_user,
+    get_user_by_email,
+    create_or_update_otp,
+    verify_otp,
+    get_otp_record,
+)
 from app.db.database import get_db
 from app.db.models import User
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+settings = get_settings()
 
 
 # ── Request / Response schemas ─────────────────────────────────────
+
+class SendOtpRequest(BaseModel):
+    name: str
+    email: EmailStr
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError("Name must be at least 2 characters.")
+        if len(v) > 100:
+            raise ValueError("Name must be at most 100 characters.")
+        return v
+
+
+class VerifySignupOtpRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    terms_accepted: bool
+    otp: str
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError("Name must be at least 2 characters.")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return v
+
+    @field_validator("terms_accepted")
+    @classmethod
+    def must_accept_terms(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError(
+                "You must accept the Terms of Service & Privacy Policy to create an account."
+            )
+        return v
+
+    @field_validator("otp")
+    @classmethod
+    def otp_format(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) != 6 or not v.isdigit():
+            raise ValueError("Verification code must be exactly 6 digits.")
+        return v
+
+
+class ResendOtpRequest(BaseModel):
+    name: str = "there"
+    email: EmailStr
+
 
 class SignupRequest(BaseModel):
     name: str
@@ -91,11 +160,157 @@ def _user_response(user: User) -> UserResponse:
 
 # ── Endpoints ─────────────────────────────────────────────────────
 
+@router.post("/send-signup-otp")
+async def send_signup_otp(
+    body: SendOtpRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Step 1: Check if email is available, generate 6-digit OTP, save to DB, and send via Brevo.
+    """
+    clean_email = body.email.strip().lower()
+    existing = await get_user_by_email(db, clean_email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email address already exists. Please sign in instead.",
+        )
+
+    # Check resend cooldown
+    record = await get_otp_record(db, clean_email, "signup")
+    now = datetime.now(timezone.utc)
+    if record and (now - record.created_at).total_seconds() < settings.otp_resend_cooldown_seconds:
+        remaining = int(settings.otp_resend_cooldown_seconds - (now - record.created_at).total_seconds())
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Please wait {remaining} seconds before requesting another verification code.",
+        )
+
+    otp_code = generate_otp()
+    expires_at = now + timedelta(minutes=settings.otp_expire_minutes)
+
+    await create_or_update_otp(
+        db,
+        email=clean_email,
+        otp_code=otp_code,
+        purpose="signup",
+        expires_at=expires_at,
+    )
+
+    # Dispatch email in background task
+    background_tasks.add_task(
+        send_brevo_otp,
+        to_email=clean_email,
+        otp_code=otp_code,
+        user_name=body.name.strip(),
+        purpose="signup",
+    )
+
+    return {
+        "status": "ok",
+        "message": f"Verification code sent to {clean_email}",
+        "expires_in_minutes": settings.otp_expire_minutes,
+    }
+
+
+@router.post("/resend-otp")
+async def resend_otp(
+    body: ResendOtpRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """Resend a new 6-digit OTP to the email address."""
+    clean_email = body.email.strip().lower()
+    existing = await get_user_by_email(db, clean_email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email address already exists.",
+        )
+
+    record = await get_otp_record(db, clean_email, "signup")
+    now = datetime.now(timezone.utc)
+    if record and (now - record.created_at).total_seconds() < settings.otp_resend_cooldown_seconds:
+        remaining = int(settings.otp_resend_cooldown_seconds - (now - record.created_at).total_seconds())
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Please wait {remaining} seconds before requesting a new code.",
+        )
+
+    otp_code = generate_otp()
+    expires_at = now + timedelta(minutes=settings.otp_expire_minutes)
+
+    await create_or_update_otp(
+        db,
+        email=clean_email,
+        otp_code=otp_code,
+        purpose="signup",
+        expires_at=expires_at,
+    )
+
+    background_tasks.add_task(
+        send_brevo_otp,
+        to_email=clean_email,
+        otp_code=otp_code,
+        user_name=body.name.strip(),
+        purpose="signup",
+    )
+
+    return {
+        "status": "ok",
+        "message": f"New verification code sent to {clean_email}",
+        "expires_in_minutes": settings.otp_expire_minutes,
+    }
+
+
+@router.post("/verify-otp-and-signup", response_model=AuthResponse, status_code=201)
+async def verify_otp_and_signup(
+    body: VerifySignupOtpRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Step 2: Validate OTP and complete user account registration.
+    """
+    clean_email = body.email.strip().lower()
+    existing = await get_user_by_email(db, clean_email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email address already exists.",
+        )
+
+    is_valid, msg = await verify_otp(
+        db,
+        email=clean_email,
+        otp_code=body.otp,
+        purpose="signup",
+    )
+
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg,
+        )
+
+    user = await create_user(
+        db,
+        name=body.name.strip(),
+        email=clean_email,
+        hashed_password=hash_password(body.password),
+        is_verified=True,
+        terms_accepted_at=datetime.now(timezone.utc),
+    )
+
+    token = create_access_token(user.id, user.email)
+    return AuthResponse(access_token=token, user=_user_response(user))
+
+
 @router.post("/signup", response_model=AuthResponse, status_code=201)
 async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
-    """Register a new user account."""
-    # Check for duplicate email
-    existing = await get_user_by_email(db, body.email)
+    """Direct signup fallback (if OTP is bypassed)."""
+    clean_email = body.email.strip().lower()
+    existing = await get_user_by_email(db, clean_email)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -105,8 +320,9 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     user = await create_user(
         db,
         name=body.name.strip(),
-        email=body.email,
+        email=clean_email,
         hashed_password=hash_password(body.password),
+        is_verified=True,
         terms_accepted_at=datetime.now(timezone.utc),
     )
 

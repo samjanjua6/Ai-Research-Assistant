@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import {
   signup as apiSignup,
+  sendSignupOtp as apiSendSignupOtp,
+  verifyOtpAndSignup as apiVerifyOtpAndSignup,
+  resendOtp as apiResendOtp,
   login as apiLogin,
   fetchMe,
   getToken,
@@ -38,7 +41,23 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
-  // ── signup ────────────────────────────────────────────────────
+  // ── signup with OTP ───────────────────────────────────────────
+  const sendSignupOtp = useCallback(async ({ name, email }) => {
+    return await apiSendSignupOtp({ name, email })
+  }, [])
+
+  const verifyOtpAndSignup = useCallback(async ({ name, email, password, terms_accepted, otp }) => {
+    const data = await apiVerifyOtpAndSignup({ name, email, password, terms_accepted, otp })
+    setToken(data.access_token)
+    setUser(data.user)
+    return data.user
+  }, [])
+
+  const resendOtp = useCallback(async ({ name, email }) => {
+    return await apiResendOtp({ name, email })
+  }, [])
+
+  // ── direct signup fallback ────────────────────────────────────
   const signup = useCallback(async ({ name, email, password, terms_accepted }) => {
     const data = await apiSignup({ name, email, password, terms_accepted })
     setToken(data.access_token)
@@ -52,7 +71,16 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
-  const value = { user, loading, login, signup, logout }
+  const value = {
+    user,
+    loading,
+    login,
+    signup,
+    sendSignupOtp,
+    verifyOtpAndSignup,
+    resendOtp,
+    logout,
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

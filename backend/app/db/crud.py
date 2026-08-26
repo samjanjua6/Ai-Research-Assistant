@@ -2,10 +2,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import ResearchRun, RunStatus, StepLog, User
+from app.db.models import EmailVerification, ResearchRun, RunStatus, StepLog, User
 
 
 # ── User helpers ──────────────────────────────────────────────────
@@ -17,11 +17,13 @@ async def create_user(
     email: str,
     hashed_password: str,
     terms_accepted_at: datetime,
+    is_verified: bool = True,
 ) -> User:
     user = User(
         name=name,
         email=email.strip().lower(),
         hashed_password=hashed_password,
+        is_verified=is_verified,
         terms_accepted=True,
         terms_accepted_at=terms_accepted_at,
         terms_version="v1.0",
@@ -42,6 +44,90 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
 async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> User | None:
     result = await db.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
+
+
+# ── Email OTP helpers ──────────────────────────────────────────────
+
+async def create_or_update_otp(
+    db: AsyncSession,
+    *,
+    email: str,
+    otp_code: str,
+    purpose: str = "signup",
+    expires_at: datetime,
+) -> EmailVerification:
+    clean_email = email.strip().lower()
+    result = await db.execute(
+        select(EmailVerification).where(
+            EmailVerification.email == clean_email,
+            EmailVerification.purpose == purpose,
+        )
+    )
+    record = result.scalar_one_or_none()
+
+    if record:
+        record.otp_code = otp_code
+        record.attempts = 0
+        record.expires_at = expires_at
+        record.created_at = datetime.now(timezone.utc)
+    else:
+        record = EmailVerification(
+            email=clean_email,
+            otp_code=otp_code,
+            purpose=purpose,
+            attempts=0,
+            expires_at=expires_at,
+        )
+        db.add(record)
+
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def get_otp_record(
+    db: AsyncSession,
+    email: str,
+    purpose: str = "signup",
+) -> EmailVerification | None:
+    result = await db.execute(
+        select(EmailVerification).where(
+            EmailVerification.email == email.strip().lower(),
+            EmailVerification.purpose == purpose,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def verify_otp(
+    db: AsyncSession,
+    *,
+    email: str,
+    otp_code: str,
+    purpose: str = "signup",
+) -> tuple[bool, str]:
+    record = await get_otp_record(db, email, purpose)
+    now = datetime.now(timezone.utc)
+
+    if not record:
+        return False, "No verification code found. Please request a new code."
+
+    if record.expires_at < now:
+        return False, "Verification code has expired. Please request a new code."
+
+    if record.attempts >= 5:
+        return False, "Too many failed attempts. Please request a new code."
+
+    if record.otp_code != otp_code.strip():
+        record.attempts += 1
+        await db.commit()
+        remaining = max(0, 5 - record.attempts)
+        return False, f"Invalid verification code. {remaining} attempt(s) remaining."
+
+    # Valid! Delete the used OTP
+    await db.delete(record)
+    await db.commit()
+    return True, "Verification successful."
 
 
 # ── ResearchRun helpers ────────────────────────────────────────────

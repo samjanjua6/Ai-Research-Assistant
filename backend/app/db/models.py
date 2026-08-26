@@ -39,6 +39,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     terms_accepted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     terms_accepted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_now
@@ -113,3 +114,20 @@ class StepLog(Base):
     )
 
     run: Mapped["ResearchRun"] = relationship(back_populates="step_logs")
+
+
+# ── EmailVerification ──────────────────────────────────────────────
+
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    otp_code: Mapped[str] = mapped_column(String(6), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(30), nullable=False, default="signup")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+

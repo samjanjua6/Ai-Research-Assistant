@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 10080   # 7 days
 
+    # ── Brevo Email / OTP ─────────────────────────────────────────
+    brevo_api_key: str = ""
+    brevo_sender_email: str = "samjanjua6@gmail.com"
+    brevo_sender_name: str = "AI Research Assistant"
+    otp_expire_minutes: int = 10
+    otp_resend_cooldown_seconds: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:

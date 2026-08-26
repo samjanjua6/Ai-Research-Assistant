@@ -41,6 +41,11 @@ async def lifespan(app: FastAPI):
         )
         await conn.execute(
             text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT TRUE;"
+            )
+        )
+        await conn.execute(
+            text(
                 "CREATE INDEX IF NOT EXISTS ix_research_runs_user_id ON research_runs(user_id);"
             )
         )
