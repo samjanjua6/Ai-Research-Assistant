@@ -77,6 +77,13 @@ export default function App() {
   const [activeQuestion,      setActiveQuestion]      = useState(null)
   const [formQuestion,        setFormQuestion]        = useState('')
   const [showBanner,          setShowBanner]          = useState(true)
+  const [selectedEngine,      setSelectedEngine]      = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('research_engine') || 'langgraph'
+    }
+    return 'langgraph'
+  })
+  const [activeEngine,        setActiveEngine]        = useState(null)
 
   // Guest draft preservation — if user types before logging in
   const [pendingQuestion,  setPendingQuestion]  = useState(null)
@@ -87,6 +94,7 @@ export default function App() {
   const [authDefaultTab,   setAuthDefaultTab]   = useState('login')
 
   const currentRunId = activeRunId || hookActiveRunId || report?.id
+  const currentEngine = report?.engine || activeEngine || selectedEngine
 
   // Toggle sidebar and persist
   const handleToggleSidebar = useCallback(() => {
@@ -137,9 +145,11 @@ export default function App() {
   // ── Handlers ─────────────────────────────────────────────────
   const handleSubmit = (payload) => {
     const q = typeof payload === 'string' ? payload : (payload?.question || '')
+    const eng = (typeof payload === 'object' && payload?.engine) ? payload.engine : selectedEngine
+    const finalPayload = typeof payload === 'object' ? { ...payload, engine: eng } : { question: q, engine: eng }
     if (!user) {
       // Save draft, open auth modal
-      setPendingQuestion(payload)
+      setPendingQuestion(finalPayload)
       setFormQuestion(q)
       setAuthDefaultTab('login')
       setShowAuthModal(true)
@@ -148,7 +158,8 @@ export default function App() {
     setActiveRunId(null)
     setActiveQuestion(q)
     setFormQuestion(q)
-    submit(payload)
+    setActiveEngine(eng)
+    submit(finalPayload)
 
     // On mobile, auto-close sidebar drawer upon submitting
     if (typeof window !== 'undefined' && window.innerWidth < 1100) {
@@ -162,10 +173,13 @@ export default function App() {
     if (pendingQuestion) {
       const p = pendingQuestion
       const q = typeof p === 'string' ? p : (p?.question || '')
+      const eng = (typeof p === 'object' && p?.engine) ? p.engine : selectedEngine
+      const finalPayload = typeof p === 'object' ? { ...p, engine: eng } : { question: q, engine: eng }
       setPendingQuestion(null)
       setActiveRunId(null)
       setActiveQuestion(q)
-      submit(p)
+      setActiveEngine(eng)
+      submit(finalPayload)
     }
   }
 
@@ -173,6 +187,7 @@ export default function App() {
     const run = history.find((r) => r.id === runId)
     setActiveRunId(runId)
     setActiveQuestion(run?.question || null)
+    setActiveEngine(run?.engine || 'langgraph')
     if (run?.question) setFormQuestion(run.question)
     viewRun(runId)
 
@@ -248,7 +263,7 @@ export default function App() {
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={handleToggleSidebar}
         onNewResearch={handleNewResearch}
-        engine={report?.engine || null}
+        engine={currentEngine}
         onOpenAdmin={() => {
           setIsAdminView(true)
           window.history.pushState({}, '', '/admin')
@@ -297,8 +312,16 @@ export default function App() {
           </div>
 
           <QuestionForm
+            initialQuestion={formQuestion}
             question={formQuestion}
             onQuestionChange={setFormQuestion}
+            engine={selectedEngine}
+            onEngineChange={(eng) => {
+              setSelectedEngine(eng)
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('research_engine', eng)
+              }
+            }}
             onSubmit={handleSubmit}
             isLoading={isLoading}
           />
@@ -338,13 +361,14 @@ export default function App() {
               phase={phase}
               steps={steps}
               report={report}
+              engine={currentEngine}
               onStop={stop}
               onRetry={handleSubmit}
             />
           )}
 
           {/* Live progress timeline */}
-          <ProgressTimeline steps={steps} phase={phase} engine={report?.engine} />
+          <ProgressTimeline steps={steps} phase={phase} engine={currentEngine} />
 
           {/* Real-time streaming draft display */}
           {phase === 'streaming' && streamingText && (

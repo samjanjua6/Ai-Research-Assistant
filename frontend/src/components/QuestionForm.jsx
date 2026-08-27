@@ -47,8 +47,19 @@ const PLACEHOLDER_PATTERNS = [
   'alternative',
 ]
 
-export default function QuestionForm({ onSubmit, onStop, isLoading, error, initialQuestion }) {
-  const [value, setValue] = useState(initialQuestion || '')
+export default function QuestionForm({
+  onSubmit,
+  onStop,
+  isLoading,
+  error,
+  initialQuestion,
+  question,
+  onQuestionChange,
+  engine: propEngine,
+  onEngineChange,
+}) {
+  const [localValue, setLocalValue] = useState(initialQuestion || question || '')
+  const [localEngine, setLocalEngine] = useState('langgraph')
   const [attachedDocs, setAttachedDocs] = useState([])
   const [attachedUrls, setAttachedUrls] = useState([])
   const [isUploading, setIsUploading] = useState(false)
@@ -56,12 +67,21 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
   const [showUrlInput, setShowUrlInput] = useState(false)
   const [urlInputValue, setUrlInputValue] = useState('')
   const [isFetchingUrl, setIsFetchingUrl] = useState(false)
-  const [engine, setEngine] = useState('langgraph') // 'langgraph' | 'crewai'
+
+  const value = question !== undefined ? question : localValue
+  const setValue = onQuestionChange || setLocalValue
+
+  const engine = propEngine !== undefined ? propEngine : localEngine
+  const setEngine = (newEng) => {
+    setLocalEngine(newEng)
+    if (onEngineChange) onEngineChange(newEng)
+  }
+
   const fileInputRef = useRef(null)
   const urlInputRef = useRef(null)
 
   useEffect(() => {
-    if (initialQuestion) {
+    if (initialQuestion !== undefined) {
       setValue(initialQuestion)
     }
   }, [initialQuestion])

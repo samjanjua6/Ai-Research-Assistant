@@ -17,12 +17,12 @@ function elapsedSince(steps) {
   return `${Math.floor(secs / 60)}m ${secs % 60}s`
 }
 
-export default function RunHeader({ question, phase, steps, report, onStop, onRetry }) {
+export default function RunHeader({ question, phase, steps, report, onStop, onRetry, engine: explicitEngine }) {
   const elapsed      = elapsedSince(steps)
   const sourcesCount = report?.sources?.length ?? 0
   const loopCount    = steps.filter(s => s.node === 'review_draft').length
 
-  const isCrew = report?.engine === 'crewai' || steps.some(
+  const isCrew = explicitEngine === 'crewai' || report?.engine === 'crewai' || steps.some(
     s => (s.node && s.node.startsWith('crew_')) || s.payload?.agent
   )
 
