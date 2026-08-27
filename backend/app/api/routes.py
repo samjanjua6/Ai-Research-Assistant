@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 import json
 import secrets
 import uuid
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
 from pydantic import BaseModel
@@ -124,6 +124,15 @@ class PublicReportResponse(BaseModel):
     created_at: str
     views_count: int = 0
     author_name: str | None = None
+
+
+StartRunRequest.model_rebuild()
+RunSummaryResponse.model_rebuild()
+StepDetailResponse.model_rebuild()
+RunDetailResponse.model_rebuild()
+ShareRunRequest.model_rebuild()
+ShareRunResponse.model_rebuild()
+PublicReportResponse.model_rebuild()
 
 
 # ── Background task: run the graph ───────────────────────────────
