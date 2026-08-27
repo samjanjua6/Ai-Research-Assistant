@@ -37,30 +37,37 @@ def build_crew_tools(
         """
         try:
             raw_results = search_duckduckgo(query, step="crew_scout", max_results=6)
-            ranked = rank_and_filter_results(raw_results, query, top_k=4)
+            ranked = rank_and_filter_results(raw_results, query, max_results=4)
             if not ranked:
                 return f"No verified web results found for query: '{query}'"
 
             output_lines = []
             for r in ranked:
                 idx = len(sources_collector) + 1
+                title = r.get("title", "Untitled")
+                url = r.get("url", "")
+                snippet = r.get("snippet", "")
+                domain = r.get("domain", "")
+                tier = r.get("tier", 3)
+                authority_label = r.get("authority_label", "")
+
                 source_record = {
                     "index": idx,
-                    "title": r.title,
-                    "url": r.url,
-                    "snippet": r.snippet,
-                    "domain": r.domain,
-                    "score": r.score,
-                    "tier": r.tier,
-                    "authority_label": r.authority_label,
-                    "signals": r.signals,
+                    "title": title,
+                    "url": url,
+                    "snippet": snippet,
+                    "domain": domain,
+                    "score": r.get("score", 0.5),
+                    "tier": tier,
+                    "authority_label": authority_label,
+                    "signals": r.get("signals", {}),
                     "step": query,
                 }
                 sources_collector.append(source_record)
                 output_lines.append(
-                    f"[{idx}] {r.title} ({r.domain} · Tier {r.tier} {r.authority_label})\n"
-                    f"URL: {r.url}\n"
-                    f"Excerpt: {r.snippet}\n"
+                    f"[{idx}] {title} ({domain} · Tier {tier} {authority_label})\n"
+                    f"URL: {url}\n"
+                    f"Excerpt: {snippet}\n"
                 )
 
             return "\n".join(output_lines)
