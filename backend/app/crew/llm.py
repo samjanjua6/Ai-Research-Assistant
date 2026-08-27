@@ -30,8 +30,10 @@ try:
 
     GroqChatConfig._transform_messages = _safe_groq_transform_messages
 
+    import asyncio
     import re
     _orig_completion = litellm.completion
+    _orig_acompletion = litellm.acompletion
 
     FALLBACK_MODELS = [
         "groq/openai/gpt-oss-120b",
@@ -68,13 +70,35 @@ try:
                     if wait_sec <= 2.5:
                         time.sleep(wait_sec + 0.5)
                     else:
-                        # Large cooldown window (e.g. minutes) — immediately rotate to alternate model
                         time.sleep(0.5)
                 else:
                     raise e
         return _orig_completion(*args, **kwargs)
 
+    async def _rate_limit_safe_acompletion(*args: Any, **kwargs: Any) -> Any:
+        current_kwargs = dict(kwargs)
+        original_model = current_kwargs.get("model", "groq/openai/gpt-oss-120b")
+        model_pool = [original_model] + [m for m in FALLBACK_MODELS if m != original_model]
+
+        for attempt in range(12):
+            model_to_use = model_pool[attempt % len(model_pool)]
+            current_kwargs["model"] = model_to_use
+            try:
+                return await _orig_acompletion(*args, **current_kwargs)
+            except Exception as e:
+                err_str = str(e).lower()
+                if isinstance(e, litellm.RateLimitError) or "rate_limit" in err_str or "429" in err_str or "tpm" in err_str or "tpd" in err_str:
+                    wait_sec = _parse_retry_seconds(str(e))
+                    if wait_sec <= 2.5:
+                        await asyncio.sleep(wait_sec + 0.5)
+                    else:
+                        await asyncio.sleep(0.5)
+                else:
+                    raise e
+        return await _orig_acompletion(*args, **kwargs)
+
     litellm.completion = _rate_limit_safe_completion
+    litellm.acompletion = _rate_limit_safe_acompletion
 except Exception:
     pass
 

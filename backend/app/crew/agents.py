@@ -28,7 +28,7 @@ def create_methodologist_agent(llm: Any, tools: list[Any] | None = None) -> Agen
         ),
         tools=tools or [],
         llm=llm,
-        max_iter=3,
+        max_iter=1,
         verbose=True,
         allow_delegation=False,
     )
@@ -49,7 +49,7 @@ def create_scout_agent(llm: Any, tools: list[Any]) -> Agent:
         ),
         tools=tools,
         llm=llm,
-        max_iter=3,
+        max_iter=2,
         verbose=True,
         allow_delegation=False,
     )
@@ -70,7 +70,7 @@ def create_synthesizer_agent(llm: Any, tools: list[Any] | None = None) -> Agent:
         ),
         tools=tools or [],
         llm=llm,
-        max_iter=3,
+        max_iter=1,
         verbose=True,
         allow_delegation=False,
     )
@@ -91,7 +91,7 @@ def create_auditor_agent(llm: Any, tools: list[Any] | None = None) -> Agent:
         ),
         tools=tools or [],
         llm=llm,
-        max_iter=3,
+        max_iter=1,
         verbose=True,
         allow_delegation=False,
     )
