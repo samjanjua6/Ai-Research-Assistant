@@ -144,12 +144,7 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
     const payload = { question: q, engine }
     if (attachedDocs.length > 0) payload.documents = attachedDocs
     if (attachedUrls.length > 0) payload.urls = attachedUrls
-
-    if (attachedDocs.length > 0 || attachedUrls.length > 0) {
-      onSubmit(payload)
-    } else {
-      onSubmit(q)
-    }
+    onSubmit(payload)
   }, [value, attachedDocs, attachedUrls, engine, isLoading, onSubmit])
 
   const handleRetry = useCallback(() => {
@@ -158,12 +153,7 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
     const payload = { question: q, engine }
     if (attachedDocs.length > 0) payload.documents = attachedDocs
     if (attachedUrls.length > 0) payload.urls = attachedUrls
-
-    if (attachedDocs.length > 0 || attachedUrls.length > 0) {
-      onSubmit(payload)
-    } else {
-      onSubmit(q)
-    }
+    onSubmit(payload)
   }, [value, attachedDocs, attachedUrls, engine, onSubmit])
 
   const handleSelectLens = (lens) => {

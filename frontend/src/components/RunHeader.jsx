@@ -1,11 +1,12 @@
-import { Square, RotateCcw, Clock, Link2, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Square, RotateCcw, Clock, Link2, RefreshCw, CheckCircle2, AlertCircle, Users, Zap } from 'lucide-react'
 
 /**
  * RunHeader — shows the current run's question, status pill, stats,
- * and a 5-segment progress bar (one segment per graph node).
+ * and dynamic progress segments per engine.
  */
 
-const NODE_ORDER = ['plan_steps', 'search_web', 'draft_report', 'review_draft', 'finalize_report']
+const LANGGRAPH_NODES = ['plan_steps', 'search_web', 'draft_report', 'review_draft', 'finalize_report']
+const CREWAI_NODES = ['crew_methodologist', 'crew_scout', 'crew_synthesizer', 'crew_auditor']
 
 function elapsedSince(steps) {
   if (steps.length < 2) return null
@@ -21,7 +22,11 @@ export default function RunHeader({ question, phase, steps, report, onStop, onRe
   const sourcesCount = report?.sources?.length ?? 0
   const loopCount    = steps.filter(s => s.node === 'review_draft').length
 
-  // Unique node names seen so far (in order)
+  const isCrew = report?.engine === 'crewai' || steps.some(
+    s => (s.node && s.node.startsWith('crew_')) || s.payload?.agent
+  )
+
+  const activeNodes = isCrew ? CREWAI_NODES : LANGGRAPH_NODES
   const seenNodes = new Set(steps.map(s => s.node))
 
   return (
@@ -54,13 +59,47 @@ export default function RunHeader({ question, phase, steps, report, onStop, onRe
         )}
         {phase === 'streaming' && (
           <span className="status-pill status-pill-running">
-            <span className="spinner" style={{ borderTopColor: 'var(--violet)', borderColor: 'rgba(124,106,240,.3)' }} />
+            <span className="spinner" style={{ borderTopColor: isCrew ? 'var(--violet)' : '#06b6d4', borderColor: isCrew ? 'rgba(124,106,240,.3)' : 'rgba(6,182,212,.3)' }} />
             Running
           </span>
         )}
         {phase === 'error' && (
           <span className="status-pill status-pill-failed">
             <AlertCircle size={12} strokeWidth={2.2} /> Failed
+          </span>
+        )}
+
+        {isCrew ? (
+          <span
+            className="chip"
+            style={{
+              color: 'var(--violet)',
+              backgroundColor: 'rgba(124, 106, 240, 0.12)',
+              border: '1px solid rgba(124, 106, 240, 0.3)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: '11px',
+              fontWeight: 600,
+            }}
+          >
+            <Users size={11} strokeWidth={2.2} /> CrewAI (4 Agents)
+          </span>
+        ) : (
+          <span
+            className="chip"
+            style={{
+              color: '#06b6d4',
+              backgroundColor: 'rgba(6, 182, 212, 0.12)',
+              border: '1px solid rgba(6, 182, 212, 0.3)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: '11px',
+              fontWeight: 600,
+            }}
+          >
+            <Zap size={11} strokeWidth={2.2} /> LangGraph Engine
           </span>
         )}
 
@@ -74,23 +113,22 @@ export default function RunHeader({ question, phase, steps, report, onStop, onRe
             <Link2 size={12} strokeWidth={2} /> <b>{sourcesCount}</b> sources
           </span>
         )}
-        {loopCount > 0 && (
+        {!isCrew && loopCount > 0 && (
           <span className="stat">
             <RefreshCw size={12} strokeWidth={2} /> <b>{loopCount}</b> refinement loop{loopCount !== 1 ? 's' : ''}
           </span>
         )}
       </div>
 
-      {/* 5-segment progress bar — one per graph node */}
+      {/* Progress track segments */}
       <div className="progress-track">
-        {NODE_ORDER.map((node) => {
-          const isDone   = seenNodes.has(node) && phase !== 'streaming'
-          const isActive = seenNodes.has(node) && phase === 'streaming' &&
-                           steps[steps.length - 1]?.node === node
+        {activeNodes.map((node) => {
+          const isNodeDone = (seenNodes.has(node) && phase !== 'streaming') || (phase === 'done')
+          const isNodeActive = seenNodes.has(node) && phase === 'streaming' && steps[steps.length - 1]?.node === node
           return (
             <div
               key={node}
-              className={`progress-seg${isDone ? ' done' : isActive ? ' active' : ''}`}
+              className={`progress-seg${isNodeDone ? ' done' : isNodeActive ? ' active' : ''}`}
             />
           )
         })}
