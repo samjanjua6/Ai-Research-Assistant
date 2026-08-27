@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Copy, Check, ExternalLink, AlertTriangle, HelpCircle, FileText } from 'lucide-react'
+import { Copy, Check, ExternalLink, AlertTriangle, HelpCircle, FileText, Globe } from 'lucide-react'
 import { toast } from '../context/ToastContext'
 
 /**
@@ -44,19 +44,24 @@ export function countCitationFrequencies(text) {
 /**
  * Preprocess markdown text to convert citation brackets [1], [2], [1, 2],
  * confidence tags [Verification Needed], [Incomplete Data],
- * and document citations [Doc: filename, p. X]
+ * document citations [Doc: filename, p. X],
+ * and web citations [URL: Title]
  * into custom markdown links that react-markdown can intercept.
  */
 export function linkifyCitations(text, sources = []) {
   if (!text) return ''
 
-  // Preprocess confidence markers & doc citations
+  // Preprocess confidence markers, doc citations & URL citations
   let processed = text
     .replace(/\[Verification Needed\]/gi, '[confidence:verification-needed](#confidence)')
     .replace(/\[Incomplete Data\]/gi, '[confidence:incomplete-data](#confidence)')
     .replace(/\[Doc:\s*([^\]]+)\]/gi, (match, label) => {
       const encoded = encodeURIComponent(label.trim())
       return `[doc-cite:${encoded}](#doc-cite)`
+    })
+    .replace(/\[URL:\s*([^\]]+)\]/gi, (match, label) => {
+      const encoded = encodeURIComponent(label.trim())
+      return `[url-cite:${encoded}](#url-cite)`
     })
 
   return processed.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (match, numString) => {
@@ -136,6 +141,35 @@ export function DocCitationBadge({ label }) {
       title={`Grounded in uploaded document: ${label}`}
     >
       <FileText size={10.5} strokeWidth={2.2} />
+      <span>{label}</span>
+    </span>
+  )
+}
+
+/**
+ * UrlCitationBadge component — rendered for [url-cite:title] markers.
+ */
+export function UrlCitationBadge({ label, url }) {
+  return (
+    <span
+      className="url-citation-badge"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 3.5,
+        padding: '1px 6px',
+        borderRadius: 4,
+        fontSize: '11px',
+        fontWeight: 600,
+        backgroundColor: 'rgba(2, 132, 199, 0.12)',
+        color: '#0284c7',
+        border: '1px solid rgba(2, 132, 199, 0.35)',
+        margin: '0 3px',
+        verticalAlign: 'middle',
+      }}
+      title={`Grounded in referenced web URL: ${label}`}
+    >
+      <Globe size={10.5} strokeWidth={2.2} />
       <span>{label}</span>
     </span>
   )

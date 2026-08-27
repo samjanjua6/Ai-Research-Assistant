@@ -11,6 +11,7 @@ import {
   CitationBadge,
   ConfidenceBadge,
   DocCitationBadge,
+  UrlCitationBadge,
 } from '../utils/citations'
 import {
   Share2,
@@ -27,6 +28,7 @@ import {
   Compass,
   ArrowRight,
   FileText,
+  Globe,
 } from 'lucide-react'
 import {
   SectionHeading,
@@ -256,6 +258,10 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
           const label = decodeURIComponent(children.replace('doc-cite:', ''))
           return <DocCitationBadge label={label} />
         }
+        if (typeof children === 'string' && children.startsWith('url-cite:')) {
+          const label = decodeURIComponent(children.replace('url-cite:', ''))
+          return <UrlCitationBadge label={label} />
+        }
         return (
           <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
             {children}
@@ -482,6 +488,67 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
                 {doc.preview && (
                   <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontStyle: 'italic', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     "{doc.preview}"
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Grounded Web References Hub ── */}
+      {report?.urls_metadata && report.urls_metadata.length > 0 && (
+        <div
+          className="grounded-urls-banner"
+          style={{
+            marginBottom: 16,
+            padding: '12px 14px',
+            backgroundColor: 'rgba(2, 132, 199, 0.08)',
+            border: '1px solid rgba(2, 132, 199, 0.28)',
+            borderRadius: 10,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 700, fontSize: '13px', color: '#0284c7' }}>
+              <Globe size={15} strokeWidth={2.2} />
+              <span>Grounded Web Reference{report.urls_metadata.length > 1 ? 's' : ''} ({report.urls_metadata.length})</span>
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+              Live page content extraction
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {report.urls_metadata.map((u, uIdx) => (
+              <div
+                key={uIdx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '6px 10px',
+                  backgroundColor: 'var(--panel)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  fontSize: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                  <a
+                    href={u.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontWeight: 600, color: 'var(--text)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <span>{u.title}</span>
+                    <ExternalLink size={11} style={{ color: 'var(--text-dim)' }} />
+                  </a>
+                  <span style={{ fontSize: '10.5px', color: '#0284c7', whiteSpace: 'nowrap' }}>
+                    {u.domain} · {u.word_count?.toLocaleString()} words
+                  </span>
+                </div>
+                {u.preview && (
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontStyle: 'italic', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    "{u.preview}"
                   </span>
                 )}
               </div>

@@ -22,6 +22,7 @@ class GraphState(TypedDict):
     run_id: str                                     # UUID of the DB row
     question: str                                   # original user question
     documents: list[dict]                           # list of uploaded document passports & text
+    grounded_urls: list[dict]                       # list of grounded URL passports & text
 
     # ── Planning ──────────────────────────────────────────────────
     steps: list[str]                                # sub-questions from planner

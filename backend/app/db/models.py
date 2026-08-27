@@ -79,6 +79,7 @@ class ResearchRun(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     sources: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     documents_metadata: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    urls_metadata: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     follow_up_questions: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     loop_count: Mapped[int] = mapped_column(Integer, default=0)
     share_token: Mapped[str | None] = mapped_column(

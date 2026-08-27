@@ -241,6 +241,19 @@ export async function uploadDocument(file) {
   return res.json() // { id, filename, file_type, file_size, page_count, word_count, preview, ... }
 }
 
+export async function fetchUrlContext(url) {
+  const res = await fetch(`${BASE}/research/fetch-url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `Failed to fetch URL (${res.status})`)
+  }
+  return res.json() // { id, url, domain, title, word_count, preview, full_text, ... }
+}
+
 export async function listRuns() {
   const res = await fetch(`${BASE}/research`, {
     headers: authHeaders(),

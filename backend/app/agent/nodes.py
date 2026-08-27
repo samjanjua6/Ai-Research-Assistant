@@ -16,8 +16,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent.state import GraphState, SearchResult
 from app.agent.tools import search_duckduckgo
-from app.agent.scoring import rank_and_filter_results, extract_clean_domain
 from app.agent.doc_parser import score_and_extract_relevant_sections
+from app.agent.url_fetcher import format_grounded_urls_for_context
 from app.agent.methodologist import (
     parse_command_lens,
     get_methodologist_planner_prompt,
@@ -104,10 +104,23 @@ async def plan_steps(state: GraphState) -> dict[str, Any]:
             doc_summaries.append(
                 f"- Document '{d.get('filename')}' ({d.get('page_count', 1)} pages, {d.get('word_count', 0)} words): {d.get('preview', '')}"
             )
-        doc_context_hint = (
+        doc_context_hint += (
             "\n\n=== ATTACHED GROUNDED DOCUMENTS ===\n"
             + "\n".join(doc_summaries)
             + "\nDecompose sub-questions to verify, contrast, and expand upon the document claims against live web literature."
+        )
+
+    urls = state.get("grounded_urls", [])
+    if urls:
+        url_summaries = []
+        for u in urls:
+            url_summaries.append(
+                f"- URL Reference '{u.get('title')}' ({u.get('domain')} · {u.get('word_count', 0)} words): {u.get('preview', '')}"
+            )
+        doc_context_hint += (
+            "\n\n=== ATTACHED GROUNDED URL REFERENCES ===\n"
+            + "\n".join(url_summaries)
+            + "\nDecompose sub-questions to cross-reference and verify claims from these referenced web URLs against broader web consensus."
         )
 
     human = f"Research inquiry: {parsed.cleaned_query}{doc_context_hint}"
@@ -228,7 +241,7 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
     doc_evidence = ""
     docs = state.get("documents", [])
     if docs:
-        doc_text = score_and_extract_relevant_sections(docs, state["question"], max_chars=35000)
+        doc_text = score_and_extract_relevant_sections(docs, state["question"], max_chars=30000)
         if doc_text:
             doc_evidence = (
                 "=== GROUNDED USER ATTACHED DOCUMENTS EVIDENCE ===\n"
@@ -239,9 +252,24 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
                 "===================================================\n\n"
             )
 
+    url_evidence = ""
+    urls = state.get("grounded_urls", [])
+    if urls:
+        url_text = format_grounded_urls_for_context(urls, max_chars=30000)
+        if url_text:
+            url_evidence = (
+                "=== GROUNDED USER ATTACHED URL REFERENCES EVIDENCE ===\n"
+                "The user provided the following grounded URL article passages. "
+                "Synthesize findings from these web pages alongside other evidence. "
+                "Cite evidence from these web references inline as [URL: <Page/Article Title>] or [URL: <domain>].\n\n"
+                f"{url_text}\n\n"
+                "========================================================\n\n"
+            )
+
     human = (
         f"Research inquiry: {state['question']}\n\n"
         f"{doc_evidence}"
+        f"{url_evidence}"
         f"=== LIVE WEB SEARCH EVIDENCE ===\n"
         f"{context}\n\n"
         "Write the structured research report:"

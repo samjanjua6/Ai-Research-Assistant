@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   Sparkles,
   Square,
@@ -17,8 +17,12 @@ import {
   X,
   Loader2,
   UploadCloud,
+  Link2,
+  Globe,
+  Zap,
+  ExternalLink,
 } from 'lucide-react'
-import { uploadDocument } from '../api/client'
+import { uploadDocument, fetchUrlContext } from '../api/client'
 import { toast } from '../context/ToastContext'
 
 const COMMAND_LENSES = [
@@ -46,15 +50,30 @@ const PLACEHOLDER_PATTERNS = [
 export default function QuestionForm({ onSubmit, onStop, isLoading, error, initialQuestion }) {
   const [value, setValue] = useState(initialQuestion || '')
   const [attachedDocs, setAttachedDocs] = useState([])
+  const [attachedUrls, setAttachedUrls] = useState([])
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [showUrlInput, setShowUrlInput] = useState(false)
+  const [urlInputValue, setUrlInputValue] = useState('')
+  const [isFetchingUrl, setIsFetchingUrl] = useState(false)
   const fileInputRef = useRef(null)
+  const urlInputRef = useRef(null)
 
   useEffect(() => {
     if (initialQuestion) {
       setValue(initialQuestion)
     }
   }, [initialQuestion])
+
+  // Detect unattached URLs typed or pasted in question textarea
+  const detectedUrl = useMemo(() => {
+    const urlRegex = /(https?:\/\/[^\s]+)/i
+    const match = value.match(urlRegex)
+    if (!match) return null
+    const foundUrl = match[0].replace(/[),;.!?]+$/, '')
+    const alreadyAttached = attachedUrls.some((u) => u.url.toLowerCase() === foundUrl.toLowerCase())
+    return alreadyAttached ? null : foundUrl
+  }, [value, attachedUrls])
 
   const handleFilesSelected = async (files) => {
     if (!files || files.length === 0) return
@@ -90,25 +109,61 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
     setAttachedDocs((prev) => prev.filter((d) => d.id !== docId))
   }
 
+  const handleAddUrl = async (urlToAdd) => {
+    const target = (urlToAdd || urlInputValue).trim()
+    if (!target) return
+    if (attachedUrls.length >= 3) {
+      toast.warning('Maximum 3 URL references allowed per research run.', { title: 'URL Limit' })
+      return
+    }
+
+    setIsFetchingUrl(true)
+    try {
+      const passport = await fetchUrlContext(target)
+      setAttachedUrls((prev) => [...prev, passport])
+      setUrlInputValue('')
+      setShowUrlInput(false)
+      toast.success(`Attached "${passport.title}" (${passport.word_count.toLocaleString()} words)`, {
+        title: 'URL Grounded',
+      })
+    } catch (err) {
+      toast.error(err.message || 'Failed to extract content from URL', { title: 'URL Fetch Error' })
+    } finally {
+      setIsFetchingUrl(false)
+    }
+  }
+
+  const handleRemoveUrl = (urlId) => {
+    setAttachedUrls((prev) => prev.filter((u) => u.id !== urlId))
+  }
+
   const handleSubmit = useCallback(() => {
     const q = value.trim()
     if (!q || isLoading) return
-    if (attachedDocs.length > 0) {
-      onSubmit({ question: q, documents: attachedDocs })
+    const payload = { question: q }
+    if (attachedDocs.length > 0) payload.documents = attachedDocs
+    if (attachedUrls.length > 0) payload.urls = attachedUrls
+
+    if (attachedDocs.length > 0 || attachedUrls.length > 0) {
+      onSubmit(payload)
     } else {
       onSubmit(q)
     }
-  }, [value, attachedDocs, isLoading, onSubmit])
+  }, [value, attachedDocs, attachedUrls, isLoading, onSubmit])
 
   const handleRetry = useCallback(() => {
     const q = value.trim()
     if (!q) return
-    if (attachedDocs.length > 0) {
-      onSubmit({ question: q, documents: attachedDocs })
+    const payload = { question: q }
+    if (attachedDocs.length > 0) payload.documents = attachedDocs
+    if (attachedUrls.length > 0) payload.urls = attachedUrls
+
+    if (attachedDocs.length > 0 || attachedUrls.length > 0) {
+      onSubmit(payload)
     } else {
       onSubmit(q)
     }
-  }, [value, attachedDocs, onSubmit])
+  }, [value, attachedDocs, attachedUrls, onSubmit])
 
   const handleSelectLens = (lens) => {
     const current = value.trim()
@@ -157,7 +212,7 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
         transition: 'all 0.2s ease',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
         <div className="eyebrow" style={{ margin: 0 }}>Ask a research question</div>
         <input
           ref={fileInputRef}
@@ -167,31 +222,64 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
           style={{ display: 'none' }}
           onChange={(e) => handleFilesSelected(e.target.files)}
         />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading || isUploading || attachedDocs.length >= 3}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '3px 8px',
-            borderRadius: 6,
-            fontSize: '11px',
-            fontWeight: 600,
-            backgroundColor: attachedDocs.length > 0 ? 'rgba(124, 106, 240, 0.12)' : 'var(--panel-alt)',
-            border: `1px solid ${attachedDocs.length > 0 ? 'rgba(124, 106, 240, 0.3)' : 'var(--border)'}`,
-            color: attachedDocs.length > 0 ? 'var(--violet)' : 'var(--text-dim)',
-            cursor: attachedDocs.length >= 3 ? 'not-allowed' : 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-          title="Upload PDF, DOCX, TXT, or MD to ground research in your document"
-        >
-          {isUploading ? <Loader2 size={12} className="spinner" /> : <Paperclip size={12} />}
-          <span>
-            {isUploading ? 'Parsing document…' : attachedDocs.length > 0 ? `Attach more (${attachedDocs.length}/3)` : 'Attach context (PDF/DOCX)'}
-          </span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* URL Input Toggle Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowUrlInput((prev) => !prev)
+              setTimeout(() => urlInputRef.current?.focus(), 50)
+            }}
+            disabled={isLoading || isFetchingUrl || attachedUrls.length >= 3}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '3px 8px',
+              borderRadius: 6,
+              fontSize: '11px',
+              fontWeight: 600,
+              backgroundColor: attachedUrls.length > 0 ? 'rgba(2, 132, 199, 0.12)' : 'var(--panel-alt)',
+              border: `1px solid ${attachedUrls.length > 0 ? 'rgba(2, 132, 199, 0.35)' : 'var(--border)'}`,
+              color: attachedUrls.length > 0 ? '#0284c7' : 'var(--text-dim)',
+              cursor: attachedUrls.length >= 3 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Paste a web URL (arXiv, GitHub, Wikipedia, blog) to ground research in live web content"
+          >
+            {isFetchingUrl ? <Loader2 size={12} className="spinner" /> : <Link2 size={12} />}
+            <span>
+              {isFetchingUrl ? 'Fetching URL…' : attachedUrls.length > 0 ? `URLs (${attachedUrls.length}/3)` : 'Paste URL'}
+            </span>
+          </button>
+
+          {/* Document Upload Button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading || isUploading || attachedDocs.length >= 3}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '3px 8px',
+              borderRadius: 6,
+              fontSize: '11px',
+              fontWeight: 600,
+              backgroundColor: attachedDocs.length > 0 ? 'rgba(124, 106, 240, 0.12)' : 'var(--panel-alt)',
+              border: `1px solid ${attachedDocs.length > 0 ? 'rgba(124, 106, 240, 0.3)' : 'var(--border)'}`,
+              color: attachedDocs.length > 0 ? 'var(--violet)' : 'var(--text-dim)',
+              cursor: attachedDocs.length >= 3 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Upload PDF, DOCX, TXT, or MD to ground research in your document"
+          >
+            {isUploading ? <Loader2 size={12} className="spinner" /> : <Paperclip size={12} />}
+            <span>
+              {isUploading ? 'Parsing document…' : attachedDocs.length > 0 ? `Files (${attachedDocs.length}/3)` : 'Attach file'}
+            </span>
+          </button>
+        </div>
       </div>
 
       <textarea
@@ -203,6 +291,169 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
         disabled={isLoading}
         rows={4}
       />
+
+      {/* ── Inline URL Input Popover Bar ── */}
+      {showUrlInput && (
+        <div
+          style={{
+            marginTop: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 10px',
+            backgroundColor: 'var(--panel-alt)',
+            border: '1px solid rgba(2, 132, 199, 0.35)',
+            borderRadius: 8,
+          }}
+        >
+          <Globe size={14} style={{ color: '#0284c7', flexShrink: 0 }} />
+          <input
+            ref={urlInputRef}
+            type="url"
+            placeholder="Paste URL e.g. https://arxiv.org/abs/... or https://github.com/..."
+            value={urlInputValue}
+            onChange={(e) => setUrlInputValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddUrl() } }}
+            disabled={isFetchingUrl}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              fontSize: '12px',
+              color: 'var(--text)',
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => handleAddUrl()}
+            disabled={isFetchingUrl || !urlInputValue.trim()}
+            style={{
+              padding: '3px 10px',
+              borderRadius: 5,
+              fontSize: '11px',
+              fontWeight: 600,
+              backgroundColor: '#0284c7',
+              color: '#fff',
+              border: 'none',
+              cursor: isFetchingUrl || !urlInputValue.trim() ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            {isFetchingUrl ? <Loader2 size={11} className="spinner" /> : null}
+            <span>Add URL</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowUrlInput(false); setUrlInputValue('') }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-faint)',
+              cursor: 'pointer',
+              padding: '2px',
+            }}
+            title="Cancel"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Auto-detected URL Suggestion Chip ── */}
+      {detectedUrl && (
+        <div
+          style={{
+            marginTop: 6,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '5px 10px',
+            backgroundColor: 'rgba(2, 132, 199, 0.08)',
+            border: '1px dashed rgba(2, 132, 199, 0.4)',
+            borderRadius: 6,
+            fontSize: '11.5px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+            <Zap size={12} style={{ color: '#0284c7', flexShrink: 0 }} />
+            <span style={{ color: 'var(--text-dim)' }}>Detected URL in question:</span>
+            <span style={{ fontWeight: 600, color: '#0284c7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
+              {detectedUrl}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleAddUrl(detectedUrl)}
+            disabled={isFetchingUrl}
+            style={{
+              fontSize: '10.5px',
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 4,
+              backgroundColor: '#0284c7',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            {isFetchingUrl ? <Loader2 size={10} className="spinner" /> : null}
+            <span>Ground Context</span>
+          </button>
+        </div>
+      )}
+
+      {/* ── Attached URL Passports ── */}
+      {attachedUrls.length > 0 && (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {attachedUrls.map((u) => (
+            <div
+              key={u.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '6px 10px',
+                backgroundColor: 'var(--panel-alt)',
+                border: '1px solid rgba(2, 132, 199, 0.35)',
+                borderRadius: 6,
+                fontSize: '11.5px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <Globe size={13} style={{ color: '#0284c7', flexShrink: 0 }} />
+                <span style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 220 }}>
+                  {u.title}
+                </span>
+                <span style={{ fontSize: '10px', color: '#0284c7', padding: '1px 5px', backgroundColor: 'rgba(2, 132, 199, 0.08)', borderRadius: 4, border: '1px solid rgba(2, 132, 199, 0.2)' }}>
+                  {u.domain} · {u.word_count.toLocaleString()} words
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRemoveUrl(u.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-faint)',
+                  cursor: 'pointer',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title="Remove attached URL"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Attached Document Passports ── */}
       {attachedDocs.length > 0 && (

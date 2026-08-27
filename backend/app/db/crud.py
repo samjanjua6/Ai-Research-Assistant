@@ -100,6 +100,7 @@ async def get_user_export_data(db: AsyncSession, user: User) -> dict[str, Any]:
                 "final_report": r.final_report,
                 "sources": r.sources,
                 "documents_metadata": r.documents_metadata,
+                "urls_metadata": r.urls_metadata,
                 "follow_up_questions": r.follow_up_questions,
                 "loop_count": r.loop_count,
                 "is_public": r.is_public,
@@ -221,12 +222,14 @@ async def create_run(
     question: str,
     user_id: uuid.UUID | None = None,
     documents_metadata: list[dict] | None = None,
+    urls_metadata: list[dict] | None = None,
 ) -> ResearchRun:
     run = ResearchRun(
         question=question,
         status=RunStatus.pending,
         user_id=user_id,
         documents_metadata=documents_metadata,
+        urls_metadata=urls_metadata,
     )
     db.add(run)
     await db.commit()
@@ -260,6 +263,7 @@ async def update_run_status(
     summary: str | None = None,
     sources: list[str] | None = None,
     documents_metadata: list[dict] | None = None,
+    urls_metadata: list[dict] | None = None,
     follow_up_questions: list[Any] | None = None,
     loop_count: int | None = None,
 ) -> ResearchRun | None:
@@ -275,6 +279,8 @@ async def update_run_status(
         run.sources = sources
     if documents_metadata is not None:
         run.documents_metadata = documents_metadata
+    if urls_metadata is not None:
+        run.urls_metadata = urls_metadata
     if follow_up_questions is not None:
         run.follow_up_questions = follow_up_questions
     if loop_count is not None:

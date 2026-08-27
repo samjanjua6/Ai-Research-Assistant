@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent.graph import graph
 from app.agent.state import GraphState
 from app.agent.doc_parser import parse_uploaded_file
+from app.agent.url_fetcher import fetch_and_parse_url
 from app.core.events import publish_event, subscribe, unsubscribe
 from app.db.crud import (
     create_run,
@@ -53,9 +54,14 @@ ACTIVE_CANCELLATIONS: dict[str, asyncio.Event] = {}
 
 # ── Request / Response schemas ────────────────────────────────────
 
+class FetchUrlRequest(BaseModel):
+    url: str
+
+
 class StartRunRequest(BaseModel):
     question: str
     documents: list[dict[str, Any]] | None = None
+    urls: list[dict[str, Any]] | None = None
 
 
 class RunSummaryResponse(BaseModel):
@@ -86,6 +92,7 @@ class RunDetailResponse(BaseModel):
     summary: str | None
     sources: list[Any] | None = None
     documents_metadata: list[Any] | None = None
+    urls_metadata: list[Any] | None = None
     follow_up_questions: list[Any] | None = None
     loop_count: int
     share_token: str | None = None
@@ -119,6 +126,7 @@ class PublicReportResponse(BaseModel):
     summary: str | None
     sources: list[Any] | None = None
     documents_metadata: list[Any] | None = None
+    urls_metadata: list[Any] | None = None
     follow_up_questions: list[Any] | None = None
     loop_count: int
     created_at: str
@@ -126,6 +134,7 @@ class PublicReportResponse(BaseModel):
     author_name: str | None = None
 
 
+FetchUrlRequest.model_rebuild()
 StartRunRequest.model_rebuild()
 RunSummaryResponse.model_rebuild()
 StepDetailResponse.model_rebuild()
@@ -141,6 +150,7 @@ async def _run_graph(
     run_id: uuid.UUID,
     question: str,
     documents: list[dict[str, Any]] | None = None,
+    urls: list[dict[str, Any]] | None = None,
 ) -> None:
     """
     Execute the LangGraph graph in a background task.
@@ -157,6 +167,7 @@ async def _run_graph(
         "run_id": str(run_id),
         "question": question,
         "documents": documents or [],
+        "grounded_urls": urls or [],
         "steps": [],
         "search_results": [],
         "draft": "",
@@ -311,6 +322,25 @@ async def upload_document_for_context(
         raise HTTPException(status_code=400, detail=f"Failed to parse document: {str(exc)}")
 
 
+@router.post("/fetch-url")
+async def fetch_url_for_context(
+    body: FetchUrlRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Fetch a web URL, strip boilerplate HTML, and return an instant URL Passport.
+    """
+    if not body.url.strip():
+        raise HTTPException(status_code=422, detail="URL must not be empty")
+
+    try:
+        passport = await fetch_and_parse_url(body.url.strip())
+        return passport
+    except Exception as exc:
+        logger.error("url_fetch_error", url=body.url, error=str(exc))
+        raise HTTPException(status_code=400, detail=f"Failed to fetch and parse URL: {str(exc)}")
+
+
 @router.post("", status_code=202)
 async def start_research(
     body: StartRunRequest,
@@ -337,14 +367,36 @@ async def start_research(
             for d in body.documents
         ]
 
+    url_meta_list = None
+    if body.urls:
+        url_meta_list = [
+            {
+                "id": u.get("id"),
+                "url": u.get("url"),
+                "domain": u.get("domain"),
+                "title": u.get("title"),
+                "word_count": u.get("word_count"),
+                "preview": u.get("preview"),
+                "status": u.get("status"),
+            }
+            for u in body.urls
+        ]
+
     run = await create_run(
         db,
         question=body.question.strip(),
         user_id=current_user.id,
         documents_metadata=doc_meta_list,
+        urls_metadata=url_meta_list,
     )
-    background_tasks.add_task(_run_graph, run.id, run.question, body.documents)
-    logger.info("research_started", run_id=str(run.id), user_id=str(current_user.id), docs=len(body.documents or []))
+    background_tasks.add_task(_run_graph, run.id, run.question, body.documents, body.urls)
+    logger.info(
+        "research_started",
+        run_id=str(run.id),
+        user_id=str(current_user.id),
+        docs=len(body.documents or []),
+        urls=len(body.urls or []),
+    )
     return {"run_id": str(run.id), "status": run.status}
 
 @router.post("/{run_id}/stop", status_code=200)
@@ -447,6 +499,7 @@ async def get_research_run(
         summary=run.summary,
         sources=run.sources or [],
         documents_metadata=run.documents_metadata or [],
+        urls_metadata=run.urls_metadata or [],
         follow_up_questions=run.follow_up_questions or [],
         loop_count=run.loop_count,
         share_token=run.share_token,
@@ -613,6 +666,7 @@ async def get_public_report(
         summary=run.summary,
         sources=run.sources or [],
         documents_metadata=run.documents_metadata or [],
+        urls_metadata=run.urls_metadata or [],
         follow_up_questions=run.follow_up_questions or [],
         loop_count=run.loop_count,
         created_at=run.created_at.isoformat(),
