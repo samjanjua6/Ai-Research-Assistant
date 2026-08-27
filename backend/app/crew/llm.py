@@ -5,7 +5,31 @@ Uses Groq high-speed inference matching the project's model settings.
 
 from __future__ import annotations
 
+import os
+from typing import Any
 from app.core.config import get_settings
+
+# Opt out of CrewAI telemetry & tracing prompts in production
+os.environ["CREWAI_TELEMETRY_OPT_OUT"] = "true"
+os.environ["CREWAI_TRACING_ENABLED"] = "false"
+
+# Ensure LiteLLM strips cache_breakpoint for Groq compatibility
+try:
+    import litellm
+    litellm.drop_params = True
+    from litellm.llms.groq.chat.transformation import GroqChatConfig
+
+    _orig_transform_messages = GroqChatConfig._transform_messages
+
+    def _safe_groq_transform_messages(self: Any, messages: list[Any], model: str, is_async: bool = False) -> Any:
+        for m in messages:
+            if isinstance(m, dict):
+                m.pop("cache_breakpoint", None)
+        return _orig_transform_messages(self, messages, model, is_async=is_async)
+
+    GroqChatConfig._transform_messages = _safe_groq_transform_messages
+except Exception:
+    pass
 
 settings = get_settings()
 
