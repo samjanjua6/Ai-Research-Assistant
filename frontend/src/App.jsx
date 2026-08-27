@@ -135,19 +135,20 @@ export default function App() {
   }, [])
 
   // ── Handlers ─────────────────────────────────────────────────
-  const handleSubmit = (question) => {
+  const handleSubmit = (payload) => {
+    const q = typeof payload === 'string' ? payload : (payload?.question || '')
     if (!user) {
       // Save draft, open auth modal
-      setPendingQuestion(question)
-      setFormQuestion(question)
+      setPendingQuestion(payload)
+      setFormQuestion(q)
       setAuthDefaultTab('login')
       setShowAuthModal(true)
       return
     }
     setActiveRunId(null)
-    setActiveQuestion(question)
-    setFormQuestion(question)
-    submit(question)
+    setActiveQuestion(q)
+    setFormQuestion(q)
+    submit(payload)
 
     // On mobile, auto-close sidebar drawer upon submitting
     if (typeof window !== 'undefined' && window.innerWidth < 1100) {
@@ -159,11 +160,12 @@ export default function App() {
     setShowAuthModal(false)
     // If there was a pending question, auto-submit it
     if (pendingQuestion) {
-      const q = pendingQuestion
+      const p = pendingQuestion
+      const q = typeof p === 'string' ? p : (p?.question || '')
       setPendingQuestion(null)
       setActiveRunId(null)
       setActiveQuestion(q)
-      submit(q)
+      submit(p)
     }
   }
 

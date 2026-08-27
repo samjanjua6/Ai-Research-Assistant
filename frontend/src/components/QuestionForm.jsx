@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Sparkles,
   Square,
@@ -12,7 +12,14 @@ import {
   Users,
   Network,
   History,
+  Paperclip,
+  FileText,
+  X,
+  Loader2,
+  UploadCloud,
 } from 'lucide-react'
+import { uploadDocument } from '../api/client'
+import { toast } from '../context/ToastContext'
 
 const COMMAND_LENSES = [
   { id: 'deep', label: 'Deep Dive', prefix: '/DEEP', Icon: Microscope, placeholder: '"Topic to analyze in depth"' },
@@ -38,6 +45,10 @@ const PLACEHOLDER_PATTERNS = [
 
 export default function QuestionForm({ onSubmit, onStop, isLoading, error, initialQuestion }) {
   const [value, setValue] = useState(initialQuestion || '')
+  const [attachedDocs, setAttachedDocs] = useState([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (initialQuestion) {
@@ -45,17 +56,59 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
     }
   }, [initialQuestion])
 
+  const handleFilesSelected = async (files) => {
+    if (!files || files.length === 0) return
+    const fileList = Array.from(files)
+
+    if (attachedDocs.length + fileList.length > 3) {
+      toast.warning('Maximum 3 attached documents allowed per research run.', { title: 'Upload Limit' })
+      return
+    }
+
+    setIsUploading(true)
+    for (const file of fileList) {
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error(`File "${file.name}" exceeds the 25MB limit.`, { title: 'File Too Large' })
+        continue
+      }
+
+      try {
+        const docPassport = await uploadDocument(file)
+        setAttachedDocs((prev) => [...prev, docPassport])
+        toast.success(`Attached "${docPassport.filename}" (${docPassport.page_count} pages, ${docPassport.word_count.toLocaleString()} words)`, {
+          title: 'Document Grounded',
+        })
+      } catch (err) {
+        toast.error(err.message || `Failed to process ${file.name}`, { title: 'Upload Error' })
+      }
+    }
+    setIsUploading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleRemoveDoc = (docId) => {
+    setAttachedDocs((prev) => prev.filter((d) => d.id !== docId))
+  }
+
   const handleSubmit = useCallback(() => {
     const q = value.trim()
     if (!q || isLoading) return
-    onSubmit(q)
-  }, [value, isLoading, onSubmit])
+    if (attachedDocs.length > 0) {
+      onSubmit({ question: q, documents: attachedDocs })
+    } else {
+      onSubmit(q)
+    }
+  }, [value, attachedDocs, isLoading, onSubmit])
 
   const handleRetry = useCallback(() => {
     const q = value.trim()
     if (!q) return
-    onSubmit(q)
-  }, [value, onSubmit])
+    if (attachedDocs.length > 0) {
+      onSubmit({ question: q, documents: attachedDocs })
+    } else {
+      onSubmit(q)
+    }
+  }, [value, attachedDocs, onSubmit])
 
   const handleSelectLens = (lens) => {
     const current = value.trim()
@@ -89,8 +142,57 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
   }
 
   return (
-    <div className="card">
-      <div className="eyebrow">Ask a research question</div>
+    <div
+      className={`card ${isDragging ? 'dropzone-active' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setIsDragging(false)
+        if (e.dataTransfer.files) handleFilesSelected(e.dataTransfer.files)
+      }}
+      style={{
+        border: isDragging ? '1px dashed var(--violet)' : undefined,
+        backgroundColor: isDragging ? 'rgba(124, 106, 240, 0.04)' : undefined,
+        transition: 'all 0.2s ease',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div className="eyebrow" style={{ margin: 0 }}>Ask a research question</div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.doc,.txt,.md,.csv"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => handleFilesSelected(e.target.files)}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isLoading || isUploading || attachedDocs.length >= 3}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '3px 8px',
+            borderRadius: 6,
+            fontSize: '11px',
+            fontWeight: 600,
+            backgroundColor: attachedDocs.length > 0 ? 'rgba(124, 106, 240, 0.12)' : 'var(--panel-alt)',
+            border: `1px solid ${attachedDocs.length > 0 ? 'rgba(124, 106, 240, 0.3)' : 'var(--border)'}`,
+            color: attachedDocs.length > 0 ? 'var(--violet)' : 'var(--text-dim)',
+            cursor: attachedDocs.length >= 3 ? 'not-allowed' : 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          title="Upload PDF, DOCX, TXT, or MD to ground research in your document"
+        >
+          {isUploading ? <Loader2 size={12} className="spinner" /> : <Paperclip size={12} />}
+          <span>
+            {isUploading ? 'Parsing document…' : attachedDocs.length > 0 ? `Attach more (${attachedDocs.length}/3)` : 'Attach context (PDF/DOCX)'}
+          </span>
+        </button>
+      </div>
 
       <textarea
         className="question-textarea question-input"
@@ -101,6 +203,53 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
         disabled={isLoading}
         rows={4}
       />
+
+      {/* ── Attached Document Passports ── */}
+      {attachedDocs.length > 0 && (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {attachedDocs.map((doc) => (
+            <div
+              key={doc.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '6px 10px',
+                backgroundColor: 'var(--panel-alt)',
+                border: '1px solid rgba(124, 106, 240, 0.28)',
+                borderRadius: 6,
+                fontSize: '11.5px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <FileText size={13} style={{ color: 'var(--violet)', flexShrink: 0 }} />
+                <span style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 220 }}>
+                  {doc.filename}
+                </span>
+                <span style={{ fontSize: '10px', color: 'var(--text-dim)', padding: '1px 5px', backgroundColor: 'var(--panel)', borderRadius: 4, border: '1px solid var(--border)' }}>
+                  {doc.page_count} {doc.page_count === 1 ? 'page' : 'pages'} · {doc.word_count.toLocaleString()} words
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRemoveDoc(doc.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-faint)',
+                  cursor: 'pointer',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title="Remove attached document"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Methodologist Command-Lens Selector Bar ── */}
       <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>

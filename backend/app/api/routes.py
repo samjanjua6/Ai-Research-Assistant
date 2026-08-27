@@ -17,13 +17,14 @@ import secrets
 import uuid
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.graph import graph
 from app.agent.state import GraphState
+from app.agent.doc_parser import parse_uploaded_file
 from app.core.events import publish_event, subscribe, unsubscribe
 from app.db.crud import (
     create_run,
@@ -54,6 +55,7 @@ ACTIVE_CANCELLATIONS: dict[str, asyncio.Event] = {}
 
 class StartRunRequest(BaseModel):
     question: str
+    documents: list[dict[str, Any]] | None = None
 
 
 class RunSummaryResponse(BaseModel):
@@ -83,6 +85,7 @@ class RunDetailResponse(BaseModel):
     final_report: str | None
     summary: str | None
     sources: list[Any] | None = None
+    documents_metadata: list[Any] | None = None
     follow_up_questions: list[Any] | None = None
     loop_count: int
     share_token: str | None = None
@@ -115,6 +118,7 @@ class PublicReportResponse(BaseModel):
     final_report: str | None
     summary: str | None
     sources: list[Any] | None = None
+    documents_metadata: list[Any] | None = None
     follow_up_questions: list[Any] | None = None
     loop_count: int
     created_at: str
@@ -124,7 +128,11 @@ class PublicReportResponse(BaseModel):
 
 # ── Background task: run the graph ───────────────────────────────
 
-async def _run_graph(run_id: uuid.UUID, question: str) -> None:
+async def _run_graph(
+    run_id: uuid.UUID,
+    question: str,
+    documents: list[dict[str, Any]] | None = None,
+) -> None:
     """
     Execute the LangGraph graph in a background task.
     Streams node-by-node updates, logs each step to DB, and persists
@@ -139,6 +147,7 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
     initial_state: GraphState = {
         "run_id": str(run_id),
         "question": question,
+        "documents": documents or [],
         "steps": [],
         "search_results": [],
         "draft": "",
@@ -148,6 +157,7 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
         "final_report": "",
         "summary": "",
         "sources": [],
+        "follow_up_questions": [],
     }
 
     # We'll fold every partial update into accumulated so we can persist at the end
@@ -268,6 +278,30 @@ async def _run_graph(run_id: uuid.UUID, question: str) -> None:
 
 # ── Endpoints ─────────────────────────────────────────────────────
 
+@router.post("/upload-doc")
+async def upload_document_for_context(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Upload a PDF, DOCX, TXT, or MD document for grounded research context.
+    Parses file, extracts metadata, and returns an instant Document Passport.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    file_bytes = await file.read()
+    if len(file_bytes) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File exceeds 25MB limit")
+
+    try:
+        parsed_doc = parse_uploaded_file(file_bytes, file.filename, file.content_type)
+        return parsed_doc
+    except Exception as exc:
+        logger.error("doc_upload_parse_error", error=str(exc), filename=file.filename)
+        raise HTTPException(status_code=400, detail=f"Failed to parse document: {str(exc)}")
+
+
 @router.post("", status_code=202)
 async def start_research(
     body: StartRunRequest,
@@ -279,9 +313,29 @@ async def start_research(
     if not body.question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
 
-    run = await create_run(db, question=body.question.strip(), user_id=current_user.id)
-    background_tasks.add_task(_run_graph, run.id, run.question)
-    logger.info("research_started", run_id=str(run.id), user_id=str(current_user.id))
+    doc_meta_list = None
+    if body.documents:
+        doc_meta_list = [
+            {
+                "id": d.get("id"),
+                "filename": d.get("filename"),
+                "file_type": d.get("file_type"),
+                "file_size": d.get("file_size"),
+                "page_count": d.get("page_count"),
+                "word_count": d.get("word_count"),
+                "preview": d.get("preview"),
+            }
+            for d in body.documents
+        ]
+
+    run = await create_run(
+        db,
+        question=body.question.strip(),
+        user_id=current_user.id,
+        documents_metadata=doc_meta_list,
+    )
+    background_tasks.add_task(_run_graph, run.id, run.question, body.documents)
+    logger.info("research_started", run_id=str(run.id), user_id=str(current_user.id), docs=len(body.documents or []))
     return {"run_id": str(run.id), "status": run.status}
 
 @router.post("/{run_id}/stop", status_code=200)
@@ -383,6 +437,8 @@ async def get_research_run(
         final_report=run.final_report,
         summary=run.summary,
         sources=run.sources or [],
+        documents_metadata=run.documents_metadata or [],
+        follow_up_questions=run.follow_up_questions or [],
         loop_count=run.loop_count,
         share_token=run.share_token,
         is_public=run.is_public or False,
@@ -547,6 +603,7 @@ async def get_public_report(
         final_report=run.final_report,
         summary=run.summary,
         sources=run.sources or [],
+        documents_metadata=run.documents_metadata or [],
         follow_up_questions=run.follow_up_questions or [],
         loop_count=run.loop_count,
         created_at=run.created_at.isoformat(),

@@ -400,6 +400,7 @@ async def get_admin_run_detail(
         "summary": run.summary,
         "final_report": run.final_report,
         "sources": run.sources or [],
+        "documents_metadata": run.documents_metadata or [],
         "follow_up_questions": run.follow_up_questions or [],
         "is_public": run.is_public,
         "share_token": run.share_token,

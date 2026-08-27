@@ -11,6 +11,7 @@ import {
   getFaviconUrl,
   CitationBadge,
   ConfidenceBadge,
+  DocCitationBadge,
 } from '../utils/citations'
 import {
   CheckCircle2,
@@ -28,6 +29,7 @@ import {
   ChevronUp,
   Compass,
   ArrowRight,
+  FileText,
 } from 'lucide-react'
 import {
   SectionHeading,
@@ -279,6 +281,10 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
           const type = children.replace('confidence:', '')
           return <ConfidenceBadge type={type} />
         }
+        if (typeof children === 'string' && children.startsWith('doc-cite:')) {
+          const label = decodeURIComponent(children.replace('doc-cite:', ''))
+          return <DocCitationBadge label={label} />
+        }
         return (
           <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
             {children}
@@ -524,6 +530,59 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                 )}
               </div>
             </div>
+
+            {/* ── Grounded Document Passports Hub ── */}
+            {report?.documents_metadata && report.documents_metadata.length > 0 && (
+              <div
+                className="grounded-docs-banner card"
+                style={{
+                  marginTop: '20px',
+                  padding: '14px 16px',
+                  backgroundColor: 'rgba(124, 106, 240, 0.08)',
+                  border: '1px solid rgba(124, 106, 240, 0.25)',
+                  borderRadius: 10,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 700, fontSize: '13px', color: 'var(--violet)' }}>
+                    <FileText size={15} strokeWidth={2.2} />
+                    <span>Grounded in Attached Document{report.documents_metadata.length > 1 ? 's' : ''} ({report.documents_metadata.length})</span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                    Cross-referenced with live open web
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {report.documents_metadata.map((doc, dIdx) => (
+                    <div
+                      key={dIdx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '6px 10px',
+                        backgroundColor: 'var(--panel)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        fontSize: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>{doc.filename}</span>
+                        <span style={{ fontSize: '10.5px', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                          {doc.page_count} {doc.page_count === 1 ? 'page' : 'pages'} · {doc.word_count?.toLocaleString()} words
+                        </span>
+                      </div>
+                      {doc.preview && (
+                        <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontStyle: 'italic', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          "{doc.preview}"
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* TL;DR Executive Summary */}
             {report.summary && (

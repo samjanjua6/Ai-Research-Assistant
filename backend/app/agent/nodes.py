@@ -17,6 +17,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.agent.state import GraphState, SearchResult
 from app.agent.tools import search_duckduckgo
 from app.agent.scoring import rank_and_filter_results, extract_clean_domain
+from app.agent.doc_parser import score_and_extract_relevant_sections
 from app.agent.methodologist import (
     parse_command_lens,
     get_methodologist_planner_prompt,
@@ -94,7 +95,22 @@ async def plan_steps(state: GraphState) -> dict[str, Any]:
 
     parsed = parse_command_lens(state["question"])
     system = get_methodologist_planner_prompt(parsed, max_steps=settings.max_steps)
-    human = f"Research inquiry: {parsed.cleaned_query}"
+
+    doc_context_hint = ""
+    docs = state.get("documents", [])
+    if docs:
+        doc_summaries = []
+        for d in docs:
+            doc_summaries.append(
+                f"- Document '{d.get('filename')}' ({d.get('page_count', 1)} pages, {d.get('word_count', 0)} words): {d.get('preview', '')}"
+            )
+        doc_context_hint = (
+            "\n\n=== ATTACHED GROUNDED DOCUMENTS ===\n"
+            + "\n".join(doc_summaries)
+            + "\nDecompose sub-questions to verify, contrast, and expand upon the document claims against live web literature."
+        )
+
+    human = f"Research inquiry: {parsed.cleaned_query}{doc_context_hint}"
 
     response = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
 
@@ -208,9 +224,26 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
 
     parsed = parse_command_lens(state["question"])
     system = get_methodologist_draft_prompt(parsed)
+
+    doc_evidence = ""
+    docs = state.get("documents", [])
+    if docs:
+        doc_text = score_and_extract_relevant_sections(docs, state["question"], max_chars=35000)
+        if doc_text:
+            doc_evidence = (
+                "=== GROUNDED USER ATTACHED DOCUMENTS EVIDENCE ===\n"
+                "The user provided the following grounded document passages. "
+                "Synthesize findings from both these documents and external web searches. "
+                "Cite document evidence inline as [Doc: <filename>, p. <page_number>] or [Doc: <filename>].\n\n"
+                f"{doc_text}\n\n"
+                "===================================================\n\n"
+            )
+
     human = (
         f"Research inquiry: {state['question']}\n\n"
-        f"Search results:\n{context}\n\n"
+        f"{doc_evidence}"
+        f"=== LIVE WEB SEARCH EVIDENCE ===\n"
+        f"{context}\n\n"
         "Write the structured research report:"
     )
 

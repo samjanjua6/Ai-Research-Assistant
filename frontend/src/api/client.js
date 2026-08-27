@@ -208,17 +208,37 @@ export async function fetchTerms() {
 
 // ── REST helpers ─────────────────────────────────────────────────
 
-export async function startRun(question) {
+export async function startRun(questionOrPayload) {
+  const body = typeof questionOrPayload === 'string'
+    ? { question: questionOrPayload }
+    : questionOrPayload
+
   const res = await fetch(`${BASE}/research`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail || `HTTP ${res.status}`)
   }
   return res.json() // { run_id, status }
+}
+
+export async function uploadDocument(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const res = await fetch(`${BASE}/research/upload-doc`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `Failed to upload file (${res.status})`)
+  }
+  return res.json() // { id, filename, file_type, file_size, page_count, word_count, preview, ... }
 }
 
 export async function listRuns() {

@@ -134,9 +134,14 @@ export function useResearch(currentUser = null) {
             summary:      data.summary,
             final_report: data.final_report,
             sources:      data.sources || [],
+            documents_metadata: data.documents_metadata || [],
+            follow_up_questions: data.follow_up_questions || [],
+            share_token:  data.share_token,
+            is_public:    data.is_public,
+            views_count:  data.views_count,
           })
           setPhase('done')
-          toast.success('Research report synthesized and finalized!', { title: 'Report Ready' })
+          toast.success('Research report synthesized successfully!', { title: 'Completed' })
         } else {
           const errText = data.error || 'Research run failed — check server logs.'
           setError(errText)
@@ -155,7 +160,7 @@ export function useResearch(currentUser = null) {
   }, [loadHistory, flushTokenBuffer])
 
   // ── submit ───────────────────────────────────────────────────────
-  const submit = useCallback(async (question) => {
+  const submit = useCallback(async (questionOrPayload) => {
     closeStream()
     setSteps([])
     setReport(null)
@@ -167,7 +172,7 @@ export function useResearch(currentUser = null) {
     toast.info('Research started — formulating plan…', { title: 'Run Started' })
 
     try {
-      const { run_id } = await startRun(question)
+      const { run_id } = await startRun(questionOrPayload)
       setActiveRunId(run_id)
       activeRunIdRef.current = run_id
       await loadHistory()
@@ -223,6 +228,8 @@ export function useResearch(currentUser = null) {
           summary:      run.summary,
           final_report: run.final_report,
           sources:      run.sources || [],
+          documents_metadata: run.documents_metadata || [],
+          follow_up_questions: run.follow_up_questions || [],
           share_token:  run.share_token,
           is_public:    run.is_public,
           views_count:  run.views_count,
