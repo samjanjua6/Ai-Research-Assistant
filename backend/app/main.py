@@ -127,8 +127,9 @@ frontend_dist = os.path.abspath(
 )
 
 @app.get("/r/{share_token}", include_in_schema=False)
+@app.get("/share/{share_token}", include_in_schema=False)
 async def serve_share_page(share_token: str):
-    """Serve public share page with dynamic OpenGraph meta tags for rich social previews."""
+    """Serve public share page with dynamic OpenGraph meta tags for rich social previews on WhatsApp, LinkedIn, Twitter."""
     index_file = os.path.join(frontend_dist, "index.html")
     if not os.path.exists(index_file):
         return HTMLResponse("<h1>Frontend build not found</h1>", status_code=404)
@@ -140,17 +141,36 @@ async def serve_share_page(share_token: str):
         async with AsyncSessionLocal() as db:
             run = await get_run_by_share_token(db, share_token)
             if run:
-                title = html.escape(f"Research Report: {run.question}")
+                title = html.escape(f"{run.question} | AI Research Assistant")
                 raw_desc = run.summary or run.question
-                desc = html.escape(raw_desc[:240] + "..." if len(raw_desc) > 240 else raw_desc)
-                og_tags = f"""<title>{title}</title>
-    <meta property="og:title" content="{title}" />
-    <meta property="og:description" content="{desc}" />
-    <meta property="og:type" content="article" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="{title}" />
-    <meta name="twitter:description" content="{desc}" />"""
-                html_content = html_content.replace("<title>Research Assistant Agent</title>", og_tags)
+                sources_count = len(run.sources) if run.sources else 0
+                desc = html.escape(
+                    (raw_desc[:200] + "..." if len(raw_desc) > 200 else raw_desc)
+                    + (f" • Grounded with {sources_count} verified sources." if sources_count else "")
+                )
+                share_url = f"https://research.mychatbot.codes/r/{share_token}"
+
+                # Replace dynamic title and meta tags
+                html_content = html_content.replace(
+                    "<title>AI Research Assistant | Autonomous Multi-Agent Synthesis</title>",
+                    f"<title>{title}</title>",
+                )
+                html_content = html_content.replace(
+                    'content="AI Research Assistant | Autonomous Multi-Agent Synthesis"',
+                    f'content="{title}"',
+                )
+                html_content = html_content.replace(
+                    'content="Autonomous deep literature discovery, multi-agent peer review, and grounded scientific synthesis powered by LangGraph and CrewAI."',
+                    f'content="{desc}"',
+                )
+                html_content = html_content.replace(
+                    'content="https://research.mychatbot.codes/"',
+                    f'content="{share_url}"',
+                )
+                html_content = html_content.replace(
+                    'content="website"',
+                    'content="article"',
+                )
 
         return HTMLResponse(content=html_content)
     except Exception:
