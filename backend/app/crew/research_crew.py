@@ -80,11 +80,11 @@ async def run_crew_research(
             )
     url_summary_text = "\n".join(url_summaries)
 
-    # 3. Create the 4 Specialized Agents
-    methodologist = create_methodologist_agent(llm)
+    # 3. Create the 4 Specialized Agents (equipped with tools to avoid Groq tool_choice errors)
+    methodologist = create_methodologist_agent(llm, tools)
     scout = create_scout_agent(llm, tools)
-    synthesizer = create_synthesizer_agent(llm)
-    auditor = create_auditor_agent(llm)
+    synthesizer = create_synthesizer_agent(llm, tools)
+    auditor = create_auditor_agent(llm, tools)
 
     # 4. Create the 4 Collaborative Tasks with discrete node callbacks
     t1_plan = create_planning_task(

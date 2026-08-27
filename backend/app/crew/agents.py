@@ -13,7 +13,7 @@ from typing import Any
 from crewai import Agent
 
 
-def create_methodologist_agent(llm: Any) -> Agent:
+def create_methodologist_agent(llm: Any, tools: list[Any] | None = None) -> Agent:
     """Creates the Lead Research Methodologist Agent."""
     return Agent(
         role="Lead Research Methodologist & Strategist",
@@ -26,6 +26,7 @@ def create_methodologist_agent(llm: Any) -> Agent:
             "problem deconstruction. You excel at detecting implicit technical assumptions, identifying "
             "non-obvious investigative angles, and outlining precise literature search queries."
         ),
+        tools=tools or [],
         llm=llm,
         max_iter=3,
         verbose=True,
@@ -54,7 +55,7 @@ def create_scout_agent(llm: Any, tools: list[Any]) -> Agent:
     )
 
 
-def create_synthesizer_agent(llm: Any) -> Agent:
+def create_synthesizer_agent(llm: Any, tools: list[Any] | None = None) -> Agent:
     """Creates the Principal Research Synthesizer Agent."""
     return Agent(
         role="Principal Research Synthesizer & Technical Author",
@@ -67,6 +68,7 @@ def create_synthesizer_agent(llm: Any) -> Agent:
             "You are an acclaimed technical author and quantitative analyst. You produce authoritative, "
             "fluff-free scientific syntheses that integrate disparate findings into structured, readable reports."
         ),
+        tools=tools or [],
         llm=llm,
         max_iter=3,
         verbose=True,
@@ -74,7 +76,7 @@ def create_synthesizer_agent(llm: Any) -> Agent:
     )
 
 
-def create_auditor_agent(llm: Any) -> Agent:
+def create_auditor_agent(llm: Any, tools: list[Any] | None = None) -> Agent:
     """Creates the Fact-Checking & Peer Review Auditor Agent."""
     return Agent(
         role="Senior Scientific Fact-Checker & Peer Review Auditor",
@@ -87,6 +89,7 @@ def create_auditor_agent(llm: Any) -> Agent:
             "You are a rigorous peer review referee committed to empirical integrity. You eliminate "
             "unsubstantiated claims, ensure claims match their citations, and provide constructive critique."
         ),
+        tools=tools or [],
         llm=llm,
         max_iter=3,
         verbose=True,
