@@ -43,12 +43,18 @@ export function countCitationFrequencies(text) {
 
 /**
  * Preprocess markdown text to convert citation brackets [1], [2], [1, 2]
+ * and confidence tags [Verification Needed], [Incomplete Data]
  * into custom markdown links that react-markdown can intercept.
  */
 export function linkifyCitations(text, sources = []) {
   if (!text) return ''
 
-  return text.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (match, numString) => {
+  // Preprocess confidence markers
+  let processed = text
+    .replace(/\[Verification Needed\]/gi, '[confidence:verification-needed](#confidence)')
+    .replace(/\[Incomplete Data\]/gi, '[confidence:incomplete-data](#confidence)')
+
+  return processed.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (match, numString) => {
     const numbers = numString
       .split(/\s*,\s*/)
       .map((n) => parseInt(n.trim(), 10))
@@ -65,6 +71,39 @@ export function linkifyCitations(text, sources = []) {
       })
       .join(' ')
   })
+}
+
+/**
+ * ConfidenceBadge component — rendered for [confidence:type] markers.
+ */
+export function ConfidenceBadge({ type }) {
+  const isVerification = type === 'verification-needed'
+  return (
+    <span
+      className="confidence-badge"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '2px 7px',
+        borderRadius: 6,
+        fontSize: '11px',
+        fontWeight: 600,
+        backgroundColor: isVerification ? 'rgba(245, 158, 11, 0.12)' : 'rgba(100, 116, 139, 0.12)',
+        color: isVerification ? '#f59e0b' : '#94a3b8',
+        border: `1px solid ${isVerification ? 'rgba(245, 158, 11, 0.3)' : 'rgba(100, 116, 139, 0.3)'}`,
+        margin: '0 3px',
+        verticalAlign: 'middle',
+      }}
+      title={
+        isVerification
+          ? 'Preliminary or disputed claim — independent verification recommended.'
+          : 'Limited literature data available on this specific aspect.'
+      }
+    >
+      <span>⚠ {isVerification ? 'Verification Needed' : 'Incomplete Data'}</span>
+    </span>
+  )
 }
 
 /**

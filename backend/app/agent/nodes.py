@@ -17,6 +17,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.agent.state import GraphState, SearchResult
 from app.agent.tools import search_duckduckgo
 from app.agent.scoring import rank_and_filter_results, extract_clean_domain
+from app.agent.methodologist import (
+    parse_command_lens,
+    get_methodologist_planner_prompt,
+    get_methodologist_draft_prompt,
+)
 from app.core.config import get_settings
 from app.core.events import publish_event
 from app.core.logging import get_logger
@@ -81,22 +86,15 @@ def clean_markdown_tables(text: str) -> str:
 
 async def plan_steps(state: GraphState) -> dict[str, Any]:
     """
-    Break the user's research question into 3-5 focused sub-questions.
-    Returns a list of plain strings that will be used as search queries.
+    Break the user's research inquiry into 3-5 focused sub-questions tuned
+    to the specific analytical command-lens (/ANGLE, /CHALLENGE, /HYP, /DEEP, /VOICES, etc.).
     """
     logger.info("node:plan_steps", run_id=state["run_id"])
     llm = _get_llm()
 
-    system = (
-        "You are a research planning assistant. "
-        "Your job is to decompose a broad research question into "
-        f"3 to {settings.max_steps} distinct, focused sub-questions that can be answered via web search. "
-        "Each sub-question should target a specific angle (e.g., background/definition, "
-        "current state/mechanism, challenges/limitations, future outlook). "
-        "Return a JSON array of strings only. Example: [\"sub-q 1\", \"sub-q 2\", \"sub-q 3\"]"
-        "Return ONLY the JSON array, no explanation, no markdown fences."
-    )
-    human = f"Research question: {state['question']}"
+    parsed = parse_command_lens(state["question"])
+    system = get_methodologist_planner_prompt(parsed, max_steps=settings.max_steps)
+    human = f"Research inquiry: {parsed.cleaned_query}"
 
     response = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
 
@@ -115,10 +113,10 @@ async def plan_steps(state: GraphState) -> dict[str, Any]:
         steps = [str(s) for s in steps[: settings.max_steps]]
     except Exception as exc:
         logger.warning("plan_steps_parse_error", error=str(exc), raw=raw)
-        # Fallback: treat the whole question as one step
-        steps = [state["question"]]
+        # Fallback: treat the cleaned query as one step
+        steps = [parsed.cleaned_query or state["question"]]
 
-    logger.info("plan_steps_done", steps=steps)
+    logger.info("plan_steps_done", lens=parsed.lens, steps=steps)
     return {"steps": steps}
 
 
@@ -208,22 +206,12 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
         )
     context = "\n".join(context_parts) or "No search results available."
 
-    system = (
-        "You are a senior research analyst. "
-        "Using ONLY the provided search snippets, write a well-structured research report "
-        "that directly answers the user's question. "
-        "The snippets are pre-ranked by relevance and domain credibility ([1], [2] being highest confidence). "
-        "Prioritize assertions supported by high-confidence citations. "
-        "Use clear headings (##) for each sub-topic. "
-        "When presenting structured comparisons or multi-dimensional summaries, use clean markdown tables. "
-        "Ensure each markdown table row is placed on its own line with proper delimiters (|). "
-        "Cite sources inline as [1], [2], etc. corresponding to the snippet numbers. "
-        "Be factual and concise. Do NOT invent information not present in the snippets."
-    )
+    parsed = parse_command_lens(state["question"])
+    system = get_methodologist_draft_prompt(parsed)
     human = (
-        f"Research question: {state['question']}\n\n"
+        f"Research inquiry: {state['question']}\n\n"
         f"Search results:\n{context}\n\n"
-        "Write the draft report:"
+        "Write the structured research report:"
     )
 
     chunks: list[str] = []
@@ -341,12 +329,13 @@ async def finalize_report(state: GraphState) -> dict[str, Any]:
     llm = _get_llm()
 
     system = (
-        "You are a professional research analyst and strategist. "
+        "You are an AI research methodologist and lead analyst. "
         "Given the draft report, perform three tasks:\n"
         "1. Produce a final polished version of the report in clear markdown. "
-        "Preserve and refine any markdown tables, ensuring each table row is on a separate line with standard markdown format.\n"
-        "2. Write a 2-3 sentence executive summary that captures the key findings.\n"
-        "3. Generate 3 to 5 high-impact, insightful follow-up research questions that explore deeper technical mechanisms, comparative trade-offs, practical scale-up challenges, or 3-5 year future outlooks.\n"
+        "Preserve the 'Q: [Summary] → A: [Analysis]' structure, markdown tables, Mermaid diagrams (if any), and inline citation tags [1], [2]. "
+        "Preserve any '[Verification Needed]' or '[Incomplete Data]' confidence markers without smoothing over ambiguities.\n"
+        "2. Write a 2-3 sentence executive summary capturing the core findings and strategic takeaway.\n"
+        "3. Generate 3 to 5 high-impact, insightful follow-up research questions acting as adaptive analytical pathways (e.g. suggesting complementary lenses like /CHALLENGE, /ANGLE, /HYP, or /VOICES).\n"
         "For each follow-up question, provide:\n"
         '  - "question": the specific, standalone research question\n'
         '  - "category": one of "Deep Dive", "Comparative Analysis", "Practical Implementation", "Future Outlook"\n'

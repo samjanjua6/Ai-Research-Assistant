@@ -9,6 +9,7 @@ import {
   extractDomain,
   getFaviconUrl,
   CitationBadge,
+  ConfidenceBadge,
 } from '../utils/citations'
 import {
   Share2,
@@ -244,6 +245,10 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
           const num = parseInt(parts[1], 10)
           const url = decodeURIComponent(parts.slice(2).join(':') || '')
           return <CitationBadge num={num} url={url} sourcePrefix="source" />
+        }
+        if (typeof children === 'string' && children.startsWith('confidence:')) {
+          const type = children.replace('confidence:', '')
+          return <ConfidenceBadge type={type} />
         }
         return (
           <a href={href} target="_blank" rel="noopener noreferrer" {...props}>

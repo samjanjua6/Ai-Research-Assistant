@@ -10,6 +10,7 @@ import {
   extractDomain,
   getFaviconUrl,
   CitationBadge,
+  ConfidenceBadge,
 } from '../utils/citations'
 import {
   CheckCircle2,
@@ -273,6 +274,10 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
           const num = parseInt(parts[1], 10)
           const url = decodeURIComponent(parts.slice(2).join(':') || '')
           return <CitationBadge num={num} url={url} sourcePrefix="public-source" />
+        }
+        if (typeof children === 'string' && children.startsWith('confidence:')) {
+          const type = children.replace('confidence:', '')
+          return <ConfidenceBadge type={type} />
         }
         return (
           <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
