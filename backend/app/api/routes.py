@@ -290,6 +290,7 @@ async def _run_graph(
         "done",
         {
             "status": "done",
+            "engine": "langgraph",
             "summary": summary_text,
             "final_report": final_report_text,
             "sources": sources_list,

@@ -189,6 +189,7 @@ async def run_crew_research(
             "done",
             {
                 "status": "done",
+                "engine": "crewai",
                 "summary": summary_text,
                 "final_report": final_report_text,
                 "sources": unique_sources,
