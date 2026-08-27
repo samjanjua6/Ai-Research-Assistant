@@ -18,6 +18,7 @@ def create_planning_task(
     inquiry: str,
     doc_summary: str = "",
     url_summary: str = "",
+    callback: Any = None,
 ) -> Task:
     """Task 1: Formulate research strategy and sub-questions."""
     doc_section = f"\nAttached Documents Context:\n{doc_summary}\n" if doc_summary else ""
@@ -38,6 +39,7 @@ def create_planning_task(
         description=description,
         expected_output="A structured research plan with 3-5 focused search queries and key investigation angles.",
         agent=agent,
+        callback=callback,
     )
 
 
@@ -45,6 +47,7 @@ def create_evidence_gathering_task(
     agent: Any,
     inquiry: str,
     planning_task_ref: Task,
+    callback: Any = None,
 ) -> Task:
     """Task 2: Search web, extract document/URL excerpts, rank evidence."""
     description = (
@@ -58,6 +61,7 @@ def create_evidence_gathering_task(
         expected_output="A curated evidence dossier containing ranked snippets, citations [1], [2], document excerpts, and technical metrics.",
         agent=agent,
         context=[planning_task_ref],
+        callback=callback,
     )
 
 
@@ -65,6 +69,7 @@ def create_synthesis_task(
     agent: Any,
     inquiry: str,
     evidence_task_ref: Task,
+    callback: Any = None,
 ) -> Task:
     """Task 3: Draft comprehensive structured research report."""
     description = (
@@ -82,6 +87,7 @@ def create_synthesis_task(
         expected_output="A comprehensive, multi-section Markdown research report with tables, headings, and strict inline citations.",
         agent=agent,
         context=[evidence_task_ref],
+        callback=callback,
     )
 
 
@@ -89,6 +95,7 @@ def create_review_and_audit_task(
     agent: Any,
     inquiry: str,
     synthesis_task_ref: Task,
+    callback: Any = None,
 ) -> Task:
     """Task 4: Fact-check draft, tag confidence levels, and generate follow-up questions."""
     description = (
@@ -107,4 +114,5 @@ def create_review_and_audit_task(
         expected_output="The finalized, audited research report in clean Markdown with confidence tags and follow-up investigation questions.",
         agent=agent,
         context=[synthesis_task_ref],
+        callback=callback,
     )

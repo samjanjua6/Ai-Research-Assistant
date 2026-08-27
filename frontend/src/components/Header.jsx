@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck } from 'lucide-react'
+import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck, Users, Zap, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { DeleteAccountModal } from './DeleteAccountModal'
@@ -8,7 +8,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { useToast } from '../context/ToastContext'
 import { Logo } from './brand/Logo'
 
-export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch, onOpenAdmin }) {
+export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch, onOpenAdmin, engine }) {
   const { user, logout } = useAuth()
   const { info: toastInfo } = useToast()
   const [showAuth, setShowAuth] = useState(false)
@@ -87,7 +87,41 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
         </div>
 
         <div className="topbar-right">
-          <span className="topbar-badge">Powered by LangGraph</span>
+          {engine === 'crewai' ? (
+            <span
+              className="topbar-badge"
+              style={{
+                borderColor: 'rgba(124, 106, 240, 0.4)',
+                backgroundColor: 'rgba(124, 106, 240, 0.1)',
+                color: 'var(--violet)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              title="Current run powered by CrewAI 4-Agent Team"
+            >
+              <Users size={11} strokeWidth={2.2} /> Powered by CrewAI
+            </span>
+          ) : engine === 'langgraph' ? (
+            <span
+              className="topbar-badge"
+              style={{
+                borderColor: 'rgba(6, 182, 212, 0.4)',
+                backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                color: '#06b6d4',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              title="Current run powered by LangGraph StateGraph Engine"
+            >
+              <Zap size={11} strokeWidth={2.2} /> Powered by LangGraph
+            </span>
+          ) : (
+            <span className="topbar-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Sparkles size={11} strokeWidth={2.2} /> Dual-Engine Multi-Agent
+            </span>
+          )}
 
           <ThemeToggle />
 

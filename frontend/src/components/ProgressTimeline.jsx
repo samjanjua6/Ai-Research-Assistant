@@ -1,12 +1,20 @@
 import { useState } from 'react'
-import { ChevronDown, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react'
+import {
+  ChevronDown,
+  CheckCircle2,
+  AlertCircle,
+  Users,
+  Zap,
+  Microscope,
+  Search,
+  FileEdit,
+  ShieldCheck,
+} from 'lucide-react'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
 /**
- * Convert raw SSE step events into a structured timeline.
- * Returns: { planStep, initialSearch, initialDraft, loops, finalizeStep }
- * where loops = list of { number, verdict, notes, didSearch, didRedraft }
+ * Convert raw SSE step events into a structured timeline for LangGraph.
  */
 function buildTimeline(steps) {
   const planStep      = steps.find(s => s.node === 'plan_steps')
@@ -14,7 +22,6 @@ function buildTimeline(steps) {
   const initialDraft  = steps.find(s => s.node === 'draft_report' && (s.loop === 0 || s.loop == null))
   const finalizeStep  = steps.find(s => s.node === 'finalize_report')
 
-  // All review_draft events — each is the end of one loop
   const reviews = steps.filter(s => s.node === 'review_draft')
 
   const loops = reviews.map((review, idx) => {
@@ -22,7 +29,6 @@ function buildTimeline(steps) {
     const nextReview = reviews[idx + 1]
     const endPos     = nextReview ? steps.indexOf(nextReview) : steps.length
 
-    // Steps that came after this review (before the next review or end)
     const after = steps.slice(reviewPos + 1, endPos)
 
     return {
@@ -38,7 +44,7 @@ function buildTimeline(steps) {
 }
 
 /* ── StepItem — accordion ──────────────────────────────────────── */
-function StepItem({ label, chips = [], children, isDone, isActive, defaultOpen = false }) {
+function StepItem({ label, chips = [], children, isDone, isActive, defaultOpen = false, icon: Icon = null }) {
   const [open, setOpen] = useState(defaultOpen)
 
   return (
@@ -48,7 +54,10 @@ function StepItem({ label, chips = [], children, isDone, isActive, defaultOpen =
       </div>
       <div className="step-body animate-in">
         <button className="step-toggle" onClick={() => setOpen(o => !o)}>
-          <span className="step-toggle-label">{label}</span>
+          <span className="step-toggle-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {Icon && <Icon size={14} strokeWidth={2} />}
+            <span>{label}</span>
+          </span>
           {chips.length > 0 && (
             <span className="step-toggle-chips">
               {chips.map((c, i) => (
@@ -129,7 +138,6 @@ function RefinementStep({ loops, isDone, isActive, isFolded }) {
     ...(approvedLoop ? [{ text: 'Approved', variant: 'teal' }] : []),
   ]
 
-  // Flat / legacy steps for the toggle
   const flatSteps = []
   loops.forEach(loop => {
     flatSteps.push({ label: 'Reviewing draft',  loop: loop.number })
@@ -152,9 +160,8 @@ function RefinementStep({ loops, isDone, isActive, isFolded }) {
       </span>
 
       {isFolded ? (
-        /* Folded view — loop accordion */
         <div className="loop-wrap">
-          {loops.map((loop, i) => (
+          {loops.map((loop) => (
             <LoopItem
               key={loop.number}
               loop={loop}
@@ -163,7 +170,6 @@ function RefinementStep({ loops, isDone, isActive, isFolded }) {
           ))}
         </div>
       ) : (
-        /* Legacy flat view */
         <>
           <div className="legacy-note">
             Legacy view — every step from every loop, always expanded.
@@ -181,23 +187,165 @@ function RefinementStep({ loops, isDone, isActive, isFolded }) {
 }
 
 /* ── Main ProgressTimeline ─────────────────────────────────────── */
-export default function ProgressTimeline({ steps, phase }) {
+export default function ProgressTimeline({ steps, phase, engine }) {
   const [isFolded, setIsFolded] = useState(true)
 
   if (steps.length === 0 && phase !== 'streaming') return null
 
-  const { planStep, initialSearch, initialDraft, loops, finalizeStep } = buildTimeline(steps)
-
   const isDone   = phase === 'done'
   const isStream = phase === 'streaming'
-
-  // Which node is currently active (last seen)
   const lastNode = steps[steps.length - 1]?.node
+
+  // Detect if this is a CrewAI run
+  const isCrew = engine === 'crewai' || steps.some(
+    (s) => (s.node && s.node.startsWith('crew_')) || s.payload?.agent || (typeof s.node === 'string' && s.node.toLowerCase().includes('agent'))
+  )
+
+  // ── 1. CrewAI 4-Agent Collaborative Timeline ──────────────────────
+  if (isCrew) {
+    const methodologistStep = steps.find((s) => s.node === 'crew_methodologist' || s.node === 'plan_steps' || s.payload?.agent?.includes('Methodologist'))
+    const scoutStep         = steps.find((s) => s.node === 'crew_scout' || s.node === 'search_web' || s.payload?.agent?.includes('Scout'))
+    const synthesizerStep   = steps.find((s) => s.node === 'crew_synthesizer' || s.node === 'draft_report' || s.payload?.agent?.includes('Synthesizer'))
+    const auditorStep       = steps.find((s) => s.node === 'crew_auditor' || s.node === 'review_draft' || s.payload?.agent?.includes('Auditor'))
+
+    return (
+      <div className="card">
+        <div className="timeline-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 className="timeline-title" style={{ margin: 0 }}>Live progress</h3>
+            <span
+              className="chip"
+              style={{
+                color: 'var(--violet)',
+                backgroundColor: 'rgba(124, 106, 240, 0.12)',
+                border: '1px solid rgba(124, 106, 240, 0.3)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: '11px',
+                fontWeight: 600,
+              }}
+            >
+              <Users size={11} strokeWidth={2.2} /> CrewAI (4 Agents)
+            </span>
+          </div>
+        </div>
+
+        <ol className="timeline-list">
+          {/* Agent 1 — Methodologist */}
+          <StepItem
+            label="Lead Research Methodologist"
+            icon={Microscope}
+            chips={[{ text: 'Research Strategist', variant: 'violet' }]}
+            isDone={isDone || !!scoutStep}
+            isActive={!isDone && (lastNode === 'crew_methodologist' || (!scoutStep && !synthesizerStep && !auditorStep))}
+            defaultOpen={true}
+          >
+            <div style={{ fontSize: '12.5px', color: 'var(--text-dim)', lineHeight: 1.5 }}>
+              Deconstructing inquiry, detecting command lenses, and establishing hypothesis vectors.
+              {methodologistStep?.payload?.thought && (
+                <p style={{ fontStyle: 'italic', color: 'var(--text)', marginTop: 4 }}>
+                  "{methodologistStep.payload.thought}"
+                </p>
+              )}
+            </div>
+          </StepItem>
+
+          {/* Agent 2 — Web Intelligence Scout */}
+          <StepItem
+            label="Web Intelligence Scout"
+            icon={Search}
+            chips={[{ text: 'Literature & Evidence Scout', variant: 'blue' }]}
+            isDone={isDone || !!synthesizerStep}
+            isActive={!isDone && (lastNode === 'crew_scout' || (!!scoutStep && !synthesizerStep))}
+            defaultOpen={true}
+          >
+            <div style={{ fontSize: '12.5px', color: 'var(--text-dim)', lineHeight: 1.5 }}>
+              Executing 5-pillar live web search, verifying domain authority, and extracting grounded document/URL passages.
+              {scoutStep?.payload?.thought && (
+                <p style={{ fontStyle: 'italic', color: 'var(--text)', marginTop: 4 }}>
+                  "{scoutStep.payload.thought}"
+                </p>
+              )}
+            </div>
+          </StepItem>
+
+          {/* Agent 3 — Principal Synthesizer */}
+          <StepItem
+            label="Principal Research Synthesizer"
+            icon={FileEdit}
+            chips={[{ text: 'Technical Author', variant: 'teal' }]}
+            isDone={isDone || !!auditorStep}
+            isActive={!isDone && (lastNode === 'crew_synthesizer' || (!!synthesizerStep && !auditorStep))}
+            defaultOpen={true}
+          >
+            <div style={{ fontSize: '12.5px', color: 'var(--text-dim)', lineHeight: 1.5 }}>
+              Synthesizing multi-source empirical evidence into structured report with comparative tables, headings, and strict inline citations.
+              {synthesizerStep?.payload?.thought && (
+                <p style={{ fontStyle: 'italic', color: 'var(--text)', marginTop: 4 }}>
+                  "{synthesizerStep.payload.thought}"
+                </p>
+              )}
+            </div>
+          </StepItem>
+
+          {/* Agent 4 — Fact-Checking Auditor */}
+          <StepItem
+            label="Fact-Checking & Review Auditor"
+            icon={ShieldCheck}
+            chips={[{ text: 'Peer Review Referee', variant: 'amber' }]}
+            isDone={isDone}
+            isActive={!isDone && (lastNode === 'crew_auditor' || !!auditorStep)}
+            defaultOpen={true}
+          >
+            <div style={{ fontSize: '12.5px', color: 'var(--text-dim)', lineHeight: 1.5 }}>
+              Auditing empirical statements against evidence, tagging confidence levels ([Confidence: High/Medium/Low]), and generating follow-up research directions.
+              {auditorStep?.payload?.thought && (
+                <p style={{ fontStyle: 'italic', color: 'var(--text)', marginTop: 4 }}>
+                  "{auditorStep.payload.thought}"
+                </p>
+              )}
+            </div>
+          </StepItem>
+
+          {/* Streaming indicator */}
+          {isStream && !isDone && (
+            <li className="step step-active">
+              <div className="step-gutter"><span className="step-node" /></div>
+              <div className="step-body" style={{ color: 'var(--text-faint)', fontSize: 13, paddingTop: 4 }}>
+                CrewAI agents collaborating on analytical sub-steps…
+              </div>
+            </li>
+          )}
+        </ol>
+      </div>
+    )
+  }
+
+  // ── 2. LangGraph State Machine Timeline ───────────────────────────
+  const { planStep, initialSearch, initialDraft, loops, finalizeStep } = buildTimeline(steps)
 
   return (
     <div className="card">
       <div className="timeline-header">
-        <h3 className="timeline-title">Live progress</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h3 className="timeline-title" style={{ margin: 0 }}>Live progress</h3>
+          <span
+            className="chip"
+            style={{
+              color: '#06b6d4',
+              backgroundColor: 'rgba(6, 182, 212, 0.12)',
+              border: '1px solid rgba(6, 182, 212, 0.3)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: '11px',
+              fontWeight: 600,
+            }}
+          >
+            <Zap size={11} strokeWidth={2.2} /> LangGraph Engine
+          </span>
+        </div>
 
         {loops.length > 0 && (
           <div className="switch-row">
@@ -298,3 +446,4 @@ export default function ProgressTimeline({ steps, phase }) {
     </div>
   )
 }
+

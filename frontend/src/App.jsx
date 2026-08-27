@@ -248,6 +248,7 @@ export default function App() {
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={handleToggleSidebar}
         onNewResearch={handleNewResearch}
+        engine={report?.engine || null}
         onOpenAdmin={() => {
           setIsAdminView(true)
           window.history.pushState({}, '', '/admin')
@@ -343,7 +344,7 @@ export default function App() {
           )}
 
           {/* Live progress timeline */}
-          <ProgressTimeline steps={steps} phase={phase} />
+          <ProgressTimeline steps={steps} phase={phase} engine={report?.engine} />
 
           {/* Real-time streaming draft display */}
           {phase === 'streaming' && streamingText && (

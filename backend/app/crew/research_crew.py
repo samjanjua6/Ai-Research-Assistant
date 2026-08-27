@@ -86,11 +86,32 @@ async def run_crew_research(
     synthesizer = create_synthesizer_agent(llm)
     auditor = create_auditor_agent(llm)
 
-    # 4. Create the 4 Collaborative Tasks
-    t1_plan = create_planning_task(methodologist, question, doc_summary_text, url_summary_text)
-    t2_evidence = create_evidence_gathering_task(scout, question, t1_plan)
-    t3_synthesis = create_synthesis_task(synthesizer, question, t2_evidence)
-    t4_review = create_review_and_audit_task(auditor, question, t3_synthesis)
+    # 4. Create the 4 Collaborative Tasks with discrete node callbacks
+    t1_plan = create_planning_task(
+        methodologist,
+        question,
+        doc_summary_text,
+        url_summary_text,
+        callback=lambda t: callback_handler.on_task_complete(t, "crew_methodologist"),
+    )
+    t2_evidence = create_evidence_gathering_task(
+        scout,
+        question,
+        t1_plan,
+        callback=lambda t: callback_handler.on_task_complete(t, "crew_scout"),
+    )
+    t3_synthesis = create_synthesis_task(
+        synthesizer,
+        question,
+        t2_evidence,
+        callback=lambda t: callback_handler.on_task_complete(t, "crew_synthesizer"),
+    )
+    t4_review = create_review_and_audit_task(
+        auditor,
+        question,
+        t3_synthesis,
+        callback=lambda t: callback_handler.on_task_complete(t, "crew_auditor"),
+    )
 
     # 5. Assemble the Crew
     crew = Crew(
@@ -98,21 +119,24 @@ async def run_crew_research(
         tasks=[t1_plan, t2_evidence, t3_synthesis, t4_review],
         process=Process.sequential,
         step_callback=callback_handler.on_step,
-        task_callback=lambda task_out: callback_handler.on_task_complete(task_out, "Task Complete"),
         verbose=True,
     )
 
     # 6. Execute Crew
     try:
-        # Run synchronous CrewAI kickoff in an async thread pool executor
+        # Initial step event broadcasting
         publish_event(
             run_id_str,
             "step",
             {
                 "run_id": run_id_str,
-                "node": "plan_steps",
+                "node": "crew_methodologist",
                 "loop": 0,
-                "payload": {"status": "Lead Methodologist analyzing inquiry…"},
+                "payload": {
+                    "agent": "Lead Research Methodologist",
+                    "role": "Research Strategist",
+                    "thought": "Deconstructing research inquiry, evaluating command lenses & formulating hypothesis vectors…",
+                },
             },
         )
 
