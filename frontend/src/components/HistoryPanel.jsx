@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import {
   Search,
   Zap,
@@ -8,6 +8,10 @@ import {
   AlertCircle,
   RotateCcw,
   X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react'
 import {
   NoRunsIllustration,
@@ -33,13 +37,20 @@ function renderHighlightedText(text, words) {
 
 /**
  * HistoryPanel — searchable run cards with multi-word matching, summary search,
- * status filter pills, keyword highlighting, and keyboard navigation.
+ * status filter pills, keyword highlighting, pagination, and keyboard navigation.
  */
 export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun, onRetry }) {
   const handleSelect = onSelect || onSelectRun || (() => {})
 
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'done' | 'failed'
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
+
+  // Reset to page 1 whenever filters or search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter])
 
   const words = useMemo(() => {
     const trimmed = searchQuery.trim().toLowerCase()
@@ -65,6 +76,16 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun,
       return true
     })
   }, [runs, statusFilter, words])
+
+  // Pagination computations
+  const totalItems = filteredRuns.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
+  const startIndex = (validCurrentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalItems)
+  const paginatedRuns = useMemo(() => {
+    return filteredRuns.slice(startIndex, endIndex)
+  }, [filteredRuns, startIndex, endIndex])
 
   // Handle keyboard navigation inside search input
   const handleKeyDown = useCallback(
@@ -215,61 +236,158 @@ export default function HistoryPanel({ runs, activeRunId, onSelect, onSelectRun,
           }
         />
       ) : (
-        <div className="history-stack">
-          {filteredRuns.map((run) => {
-            const time = new Date(run.created_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-            const dotClass = `dot dot-${run.status}`
-            const isActive = run.id === activeRunId
+        <>
+          <div className="history-stack">
+            {paginatedRuns.map((run) => {
+              const time = new Date(run.created_at).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+              const dotClass = `dot dot-${run.status}`
+              const isActive = run.id === activeRunId
 
-            return (
-              <div
-                key={run.id}
-                className={`run-card${isActive ? ' active' : ''}`}
-                onClick={() => handleSelect(run.id)}
-              >
-                <div className="run-card-q" title={run.question}>
-                  {renderHighlightedText(run.question, words)}
-                </div>
-
-                <div className="run-meta">
-                  <span className={dotClass} />
-                  <span className="run-time">
-                    {run.status.charAt(0).toUpperCase() + run.status.slice(1)} · {time}
-                  </span>
-
-                  {run.status === 'done' && run.loop_count > 0 && (
-                    <span className="chip" style={{ marginLeft: 'auto' }}>
-                      {run.loop_count} loop{run.loop_count !== 1 ? 's' : ''}
-                    </span>
-                  )}
-
-                  {run.status === 'failed' && onRetry && (
-                    <button
-                      className="history-retry-btn"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onRetry(run.question)
-                      }}
-                      title="Retry this research run"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                    >
-                      <RotateCcw size={11} strokeWidth={2} /> Retry
-                    </button>
-                  )}
-                </div>
-
-                {run.status === 'failed' && (
-                  <div className="fail-reason">
-                    {run.error || 'Run failed — check server logs.'}
+              return (
+                <div
+                  key={run.id}
+                  className={`run-card${isActive ? ' active' : ''}`}
+                  onClick={() => handleSelect(run.id)}
+                >
+                  <div className="run-card-q" title={run.question}>
+                    {renderHighlightedText(run.question, words)}
                   </div>
-                )}
+
+                  <div className="run-meta">
+                    <span className={dotClass} />
+                    <span className="run-time">
+                      {run.status.charAt(0).toUpperCase() + run.status.slice(1)} · {time}
+                    </span>
+
+                    {run.status === 'done' && run.loop_count > 0 && (
+                      <span className="chip" style={{ marginLeft: 'auto' }}>
+                        {run.loop_count} loop{run.loop_count !== 1 ? 's' : ''}
+                      </span>
+                    )}
+
+                    {run.status === 'failed' && onRetry && (
+                      <button
+                        className="history-retry-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onRetry(run.question)
+                        }}
+                        title="Retry this research run"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <RotateCcw size={11} strokeWidth={2} /> Retry
+                      </button>
+                    )}
+                  </div>
+
+                  {run.status === 'failed' && (
+                    <div className="fail-reason">
+                      {run.error || 'Run failed — check server logs.'}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── Pagination Controls Bar ── */}
+          {totalItems > 0 && (
+            <div
+              className="history-pagination-bar"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: 12,
+                paddingTop: 10,
+                borderTop: '1px solid var(--border)',
+                fontSize: '11.5px',
+                color: 'var(--text-dim)',
+                flexWrap: 'wrap',
+                gap: 8,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>
+                  {startIndex + 1}–{endIndex} of {totalItems}
+                </span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value))
+                    setCurrentPage(1)
+                  }}
+                  style={{
+                    background: 'var(--panel-alt)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    color: 'var(--text)',
+                    fontSize: '11px',
+                    padding: '1px 4px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
+                  aria-label="Runs per page"
+                >
+                  <option value={5}>5 / page</option>
+                  <option value={10}>10 / page</option>
+                  <option value={20}>20 / page</option>
+                </select>
               </div>
-            )
-          })}
-        </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={validCurrentPage <= 1}
+                  style={{ padding: '2px 5px', height: 24, fontSize: '11px' }}
+                  title="First page"
+                >
+                  <ChevronsLeft size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={validCurrentPage <= 1}
+                  style={{ padding: '2px 6px', height: 24, fontSize: '11px' }}
+                  title="Previous page"
+                >
+                  <ChevronLeft size={12} />
+                </button>
+
+                <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text)', padding: '0 4px' }}>
+                  {validCurrentPage} / {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={validCurrentPage >= totalPages}
+                  style={{ padding: '2px 6px', height: 24, fontSize: '11px' }}
+                  title="Next page"
+                >
+                  <ChevronRight size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={validCurrentPage >= totalPages}
+                  style={{ padding: '2px 5px', height: 24, fontSize: '11px' }}
+                  title="Last page"
+                >
+                  <ChevronsRight size={12} />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

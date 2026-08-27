@@ -434,8 +434,8 @@ async def list_research_runs(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return up to 20 most recent research runs for the authenticated user."""
-    runs = await list_runs(db, user_id=current_user.id)
+    """Return up to 100 most recent research runs for the authenticated user."""
+    runs = await list_runs(db, user_id=current_user.id, limit=100)
     results = []
     for r in runs:
         error_msg = None
