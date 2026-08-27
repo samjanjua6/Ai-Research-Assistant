@@ -37,14 +37,17 @@ settings = get_settings()
 def get_crew_llm():
     """
     Returns an LLM instance configured for CrewAI agents.
-    Uses Groq API key and model configured in settings.
+    Uses Groq API key with optimal multi-agent token throughput.
     """
     try:
         from crewai import LLM
-        # Use Groq model via LiteLLM provider
+        # Use high-throughput Groq model for multi-agent workflows to prevent TPM exhaustion
         model_name = settings.groq_model
-        if not model_name.startswith("groq/"):
+        if "gpt-oss-120b" in model_name:
+            model_name = "groq/openai/gpt-oss-20b"
+        elif not model_name.startswith("groq/"):
             model_name = f"groq/{model_name}"
+
         return LLM(
             model=model_name,
             api_key=settings.groq_api_key,

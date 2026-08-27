@@ -31,7 +31,7 @@ _DEFAULT_MAX_RESULTS = 3
 
 def search_duckduckgo(
     query: str,
-    step: str,
+    step: str = "",
     max_results: int = _DEFAULT_MAX_RESULTS,
 ) -> list["SearchResult"]:
     """
