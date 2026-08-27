@@ -223,6 +223,7 @@ async def create_run(
     user_id: uuid.UUID | None = None,
     documents_metadata: list[dict] | None = None,
     urls_metadata: list[dict] | None = None,
+    engine: str | None = "langgraph",
 ) -> ResearchRun:
     run = ResearchRun(
         question=question,
@@ -230,6 +231,7 @@ async def create_run(
         user_id=user_id,
         documents_metadata=documents_metadata,
         urls_metadata=urls_metadata,
+        engine=engine or "langgraph",
     )
     db.add(run)
     await db.commit()

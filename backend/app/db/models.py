@@ -80,6 +80,7 @@ class ResearchRun(Base):
     sources: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     documents_metadata: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     urls_metadata: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    engine: Mapped[str | None] = mapped_column(String(32), default="langgraph", nullable=True)
     follow_up_questions: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     loop_count: Mapped[int] = mapped_column(Integer, default=0)
     share_token: Mapped[str | None] = mapped_column(

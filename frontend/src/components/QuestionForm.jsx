@@ -56,6 +56,7 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
   const [showUrlInput, setShowUrlInput] = useState(false)
   const [urlInputValue, setUrlInputValue] = useState('')
   const [isFetchingUrl, setIsFetchingUrl] = useState(false)
+  const [engine, setEngine] = useState('langgraph') // 'langgraph' | 'crewai'
   const fileInputRef = useRef(null)
   const urlInputRef = useRef(null)
 
@@ -140,7 +141,7 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
   const handleSubmit = useCallback(() => {
     const q = value.trim()
     if (!q || isLoading) return
-    const payload = { question: q }
+    const payload = { question: q, engine }
     if (attachedDocs.length > 0) payload.documents = attachedDocs
     if (attachedUrls.length > 0) payload.urls = attachedUrls
 
@@ -149,12 +150,12 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
     } else {
       onSubmit(q)
     }
-  }, [value, attachedDocs, attachedUrls, isLoading, onSubmit])
+  }, [value, attachedDocs, attachedUrls, engine, isLoading, onSubmit])
 
   const handleRetry = useCallback(() => {
     const q = value.trim()
     if (!q) return
-    const payload = { question: q }
+    const payload = { question: q, engine }
     if (attachedDocs.length > 0) payload.documents = attachedDocs
     if (attachedUrls.length > 0) payload.urls = attachedUrls
 
@@ -163,7 +164,7 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
     } else {
       onSubmit(q)
     }
-  }, [value, attachedDocs, attachedUrls, onSubmit])
+  }, [value, attachedDocs, attachedUrls, engine, onSubmit])
 
   const handleSelectLens = (lens) => {
     const current = value.trim()
@@ -501,6 +502,81 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
           ))}
         </div>
       )}
+
+      {/* ── Multi-Agent Engine Selector Bar ── */}
+      <div
+        style={{
+          marginTop: 10,
+          padding: '7px 10px',
+          backgroundColor: 'var(--panel-alt)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Multi-Agent Engine
+          </span>
+          <span style={{ fontSize: '10.5px', color: 'var(--text-faint)' }}>
+            Select execution paradigm
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            type="button"
+            className={`engine-pill-btn ${engine === 'langgraph' ? 'active' : ''}`}
+            onClick={() => setEngine('langgraph')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 8px',
+              fontSize: '11px',
+              fontWeight: 600,
+              borderRadius: 6,
+              cursor: 'pointer',
+              border: engine === 'langgraph' ? '1px solid rgba(6, 182, 212, 0.5)' : '1px solid var(--border)',
+              backgroundColor: engine === 'langgraph' ? 'rgba(6, 182, 212, 0.12)' : 'transparent',
+              color: engine === 'langgraph' ? '#06b6d4' : 'var(--text-dim)',
+              transition: 'all 0.15s ease',
+            }}
+            title="LangGraph StateGraph (Fast deterministic state machine with token-by-token streaming)"
+          >
+            <Zap size={11} strokeWidth={2.2} />
+            <span>LangGraph (Fast)</span>
+          </button>
+
+          <button
+            type="button"
+            className={`engine-pill-btn ${engine === 'crewai' ? 'active' : ''}`}
+            onClick={() => setEngine('crewai')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 8px',
+              fontSize: '11px',
+              fontWeight: 600,
+              borderRadius: 6,
+              cursor: 'pointer',
+              border: engine === 'crewai' ? '1px solid rgba(124, 106, 240, 0.5)' : '1px solid var(--border)',
+              backgroundColor: engine === 'crewai' ? 'rgba(124, 106, 240, 0.12)' : 'transparent',
+              color: engine === 'crewai' ? 'var(--violet)' : 'var(--text-dim)',
+              transition: 'all 0.15s ease',
+            }}
+            title="CrewAI 4-Agent Team (Methodologist, Scout, Synthesizer, Auditor)"
+          >
+            <Users size={11} strokeWidth={2.2} />
+            <span>CrewAI (4 Agents)</span>
+          </button>
+        </div>
+      </div>
 
       {/* ── Methodologist Command-Lens Selector Bar ── */}
       <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>

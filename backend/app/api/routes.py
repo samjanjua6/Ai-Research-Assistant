@@ -62,6 +62,7 @@ class StartRunRequest(BaseModel):
     question: str
     documents: list[dict[str, Any]] | None = None
     urls: list[dict[str, Any]] | None = None
+    engine: str | None = "langgraph"
 
 
 class RunSummaryResponse(BaseModel):
@@ -95,6 +96,7 @@ class RunDetailResponse(BaseModel):
     urls_metadata: list[Any] | None = None
     follow_up_questions: list[Any] | None = None
     loop_count: int
+    engine: str | None = "langgraph"
     share_token: str | None = None
     is_public: bool = False
     views_count: int = 0
@@ -129,6 +131,7 @@ class PublicReportResponse(BaseModel):
     urls_metadata: list[Any] | None = None
     follow_up_questions: list[Any] | None = None
     loop_count: int
+    engine: str | None = "langgraph"
     created_at: str
     views_count: int = 0
     author_name: str | None = None
@@ -388,16 +391,24 @@ async def start_research(
         user_id=current_user.id,
         documents_metadata=doc_meta_list,
         urls_metadata=url_meta_list,
+        engine=body.engine or "langgraph",
     )
-    background_tasks.add_task(_run_graph, run.id, run.question, body.documents, body.urls)
+
+    if body.engine == "crewai":
+        from app.crew.research_crew import run_crew_research
+        background_tasks.add_task(run_crew_research, run.id, run.question, body.documents, body.urls)
+    else:
+        background_tasks.add_task(_run_graph, run.id, run.question, body.documents, body.urls)
+
     logger.info(
         "research_started",
         run_id=str(run.id),
         user_id=str(current_user.id),
+        engine=run.engine,
         docs=len(body.documents or []),
         urls=len(body.urls or []),
     )
-    return {"run_id": str(run.id), "status": run.status}
+    return {"run_id": str(run.id), "status": run.status, "engine": run.engine}
 
 @router.post("/{run_id}/stop", status_code=200)
 async def stop_research(
@@ -502,6 +513,7 @@ async def get_research_run(
         urls_metadata=run.urls_metadata or [],
         follow_up_questions=run.follow_up_questions or [],
         loop_count=run.loop_count,
+        engine=run.engine or "langgraph",
         share_token=run.share_token,
         is_public=run.is_public or False,
         views_count=run.views_count or 0,
@@ -669,6 +681,7 @@ async def get_public_report(
         urls_metadata=run.urls_metadata or [],
         follow_up_questions=run.follow_up_questions or [],
         loop_count=run.loop_count,
+        engine=run.engine or "langgraph",
         created_at=run.created_at.isoformat(),
         views_count=run.views_count or 0,
         author_name=author_name,
