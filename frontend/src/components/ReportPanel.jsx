@@ -54,7 +54,7 @@ function escapeHtml(str) {
 }
 
 // ── Full styled PDF HTML document ────────────────────────────────────────────
-function buildPDFDocument({ question, summary, finalReport, sources, markedFn }) {
+function buildPDFDocument({ question, summary, finalReport, sources, markedFn, engine }) {
   let linkedReport = finalReport || ''
   if (sources?.length) {
     linkedReport = linkedReport.replace(/\[(\d+)\]/g, (m, num) => {
@@ -68,14 +68,27 @@ function buildPDFDocument({ question, summary, finalReport, sources, markedFn })
     })
   }
 
-  const reportHtml = markedFn(linkedReport)
+  let reportHtml = ''
+  try {
+    if (typeof markedFn === 'function') {
+      reportHtml = markedFn(linkedReport)
+    } else if (markedFn?.parse) {
+      reportHtml = markedFn.parse(linkedReport)
+    } else {
+      reportHtml = String(linkedReport)
+    }
+  } catch (_) {
+    reportHtml = String(linkedReport)
+  }
+
   const date = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   })
+  const engineLabel = engine === 'crewai' ? 'Powered by CrewAI (4 Agents)' : 'Powered by LangGraph'
 
-  const tldrHtml = summary
+  const summaryHtml = summary
     ? `<div class="tldr-box">
         <div class="tldr-label">TL;DR</div>
         <p class="tldr-text">${escapeHtml(summary)}</p>
@@ -109,59 +122,61 @@ function buildPDFDocument({ question, summary, finalReport, sources, markedFn })
 html, body {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 11pt;
-  line-height: 1.75;
+  line-height: 1.7;
   color: #1a1a2e;
   background: #fff;
 }
-@page { size: A4; margin: 0; }
-@media print {
-  html, body { width: 210mm; }
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-  .pdf-cover { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  .tldr-box, .sources-section, table, pre, blockquote { page-break-inside: avoid; break-inside: avoid; }
-  h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
+@page {
+  margin: 1.8cm 1.6cm 2cm 1.6cm;
+  @bottom-center {
+    content: counter(page);
+    font-size: 8pt;
+    color: #999;
+  }
 }
 .pdf-cover {
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 55%, #24243e 100%);
-  color: #fff;
-  padding: 52px 48px 44px;
+  padding: 36px 0 28px 0;
+  border-bottom: 2.5px solid #302b63;
+  margin-bottom: 28px;
 }
 .cover-app {
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 9.5pt;
-  font-weight: 600;
-  letter-spacing: 0.18em;
+  font-size: 8.5pt;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(255,255,255,.55);
-  margin-bottom: 16px;
+  color: #7c6af0;
+  margin-bottom: 8px;
 }
 .cover-question {
-  font-family: 'Helvetica Neue', Arial, sans-serif;
   font-size: 20pt;
   font-weight: 700;
-  line-height: 1.3;
-  color: #ffffff;
-  margin-bottom: 24px;
+  color: #0f0c29;
+  line-height: 1.25;
+  margin-bottom: 14px;
 }
-.cover-chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.cover-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .chip {
   font-family: 'Helvetica Neue', Arial, sans-serif;
   font-size: 8pt;
-  font-weight: 500;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.2);
-  color: rgba(255,255,255,.85);
-  padding: 4px 12px;
+  font-weight: 600;
+  background: #f0eeff;
+  color: #5a4fd0;
+  border: 1px solid #d4ceff;
+  padding: 3px 10px;
   border-radius: 999px;
 }
-.pdf-body { padding: 40px 48px 56px; }
+.pdf-body { padding: 0; }
 .tldr-box {
-  background: #f4f1fd;
-  border: 1px solid #d9d2f8;
+  background: #f7f6fd;
   border-left: 4px solid #7c6af0;
-  border-radius: 6px;
-  padding: 16px 20px;
-  margin-bottom: 32px;
+  border-radius: 4px;
+  padding: 14px 18px;
+  margin-bottom: 28px;
 }
 .tldr-label {
   font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -170,14 +185,25 @@ html, body {
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: #7c6af0;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
-.tldr-text { font-size: 10.5pt; line-height: 1.65; color: #2d2b4e; }
-h1, h2, h3, h4 { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0f0c29; margin-top: 28px; margin-bottom: 12px; line-height: 1.35; }
-h1 { font-size: 16pt; border-bottom: 2px solid #7c6af0; padding-bottom: 6px; }
-h2 { font-size: 13.5pt; color: #302b63; border-bottom: 1px solid #e8e4f8; padding-bottom: 4px; }
-p { margin-bottom: 14px; text-align: justify; }
-ul, ol { margin: 0 0 16px 24px; }
+.tldr-text {
+  font-size: 10.5pt;
+  line-height: 1.6;
+  color: #24243e;
+}
+h1, h2, h3, h4 {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  color: #0f0c29;
+  margin-top: 24px;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+h1 { font-size: 16pt; border-bottom: 1.5px solid #7c6af0; padding-bottom: 4px; }
+h2 { font-size: 13pt; color: #302b63; border-bottom: 1px solid #e8e4f8; padding-bottom: 3px; }
+h3 { font-size: 11pt; color: #4a4870; }
+p { margin-bottom: 12px; text-align: justify; }
+ul, ol { margin: 0 0 14px 22px; }
 li { margin-bottom: 6px; }
 blockquote { border-left: 3px solid #7c6af0; margin: 18px 0; padding: 8px 18px; color: #4a4870; background: #faf9ff; font-style: italic; }
 table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 9.5pt; }
@@ -198,7 +224,7 @@ tr:nth-child(even) td { background: #f9f8fe; }
   <div class="cover-chips">
     <span class="chip">${date}</span>
     ${sources?.length ? `<span class="chip">${sources.length} sources</span>` : ''}
-    <span class="chip">Powered by LangGraph</span>
+    <span class="chip">${engineLabel}</span>
   </div>
 </div>
 <div class="pdf-body">
@@ -348,50 +374,64 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
   const handleExportPDF = useCallback(async () => {
     setExporting(true)
     let iframe = null
-    let blobUrl = null
 
     try {
-      const { marked } = await import('marked')
+      const markedModule = await import('marked')
+      const markedObj = markedModule.default || markedModule.marked || markedModule
+      const safeParse = (md) => {
+        try {
+          if (typeof markedObj.parse === 'function') return markedObj.parse(md, { gfm: true, breaks: true })
+          if (typeof markedObj === 'function') return markedObj(md, { gfm: true, breaks: true })
+          return String(md)
+        } catch {
+          return String(md)
+        }
+      }
 
       const html = buildPDFDocument({
         question: question || '',
         summary: report.summary,
         finalReport: normalizedReport,
         sources: report.sources || [],
-        markedFn: marked,
+        markedFn: safeParse,
+        engine: report?.engine,
       })
 
-      const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
-      blobUrl = URL.createObjectURL(blob)
-
+      // Method 1: Hidden iframe print
       iframe = document.createElement('iframe')
-      iframe.style.cssText =
-        'position:fixed;top:-1px;left:-1px;width:1px;height:1px;' +
-        'border:none;opacity:0;pointer-events:none;'
+      iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;'
       document.body.appendChild(iframe)
 
-      await new Promise((resolve, reject) => {
-        iframe.onload = () => setTimeout(resolve, 700)
-        iframe.onerror = reject
-        iframe.src = blobUrl
-      })
+      const doc = iframe.contentWindow?.document || iframe.contentDocument
+      if (doc) {
+        doc.open()
+        doc.write(html)
+        doc.close()
 
-      iframe.contentWindow.focus()
-      iframe.contentWindow.print()
-
-      const cleanup = () => {
-        try { if (iframe) document.body.removeChild(iframe) } catch (_) {}
-        try { if (blobUrl) URL.revokeObjectURL(blobUrl) } catch (_) {}
-        iframe = null
-        blobUrl = null
+        setTimeout(() => {
+          try {
+            iframe.contentWindow.focus()
+            iframe.contentWindow.print()
+            setTimeout(() => {
+              try { if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe) } catch (_) {}
+            }, 3000)
+          } catch (printErr) {
+            console.warn('Iframe print blocked, falling back to popup window:', printErr)
+            const printWin = window.open('', '_blank')
+            if (printWin) {
+              printWin.document.write(html)
+              printWin.document.close()
+              printWin.focus()
+              printWin.print()
+            }
+          }
+        }, 500)
+      } else {
+        throw new Error('Unable to access print frame document')
       }
-      try { iframe.contentWindow.addEventListener('afterprint', cleanup) } catch (_) {}
-      setTimeout(cleanup, 60_000)
     } catch (err) {
       console.error('PDF export failed:', err)
-      try { if (iframe) document.body.removeChild(iframe) } catch (_) {}
-      try { if (blobUrl) URL.revokeObjectURL(blobUrl) } catch (_) {}
-      alert('PDF export failed. Please use "Download .md" instead.')
+      toast.error('Could not open print dialog. Please use "Download .md" instead.', { title: 'PDF Export Failed' })
     } finally {
       setExporting(false)
     }

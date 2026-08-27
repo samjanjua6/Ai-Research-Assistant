@@ -60,7 +60,7 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
 }
 
-function buildPDFDocument({ question, summary, finalReport, sources, markedFn }) {
+function buildPDFDocument({ question, summary, finalReport, sources, markedFn, engine }) {
   let linkedReport = finalReport || ''
   if (sources?.length) {
     linkedReport = linkedReport.replace(/\[(\d+)\]/g, (m, num) => {
@@ -74,12 +74,25 @@ function buildPDFDocument({ question, summary, finalReport, sources, markedFn })
     })
   }
 
-  const reportHtml = markedFn(linkedReport)
+  let reportHtml = ''
+  try {
+    if (typeof markedFn === 'function') {
+      reportHtml = markedFn(linkedReport)
+    } else if (markedFn?.parse) {
+      reportHtml = markedFn.parse(linkedReport)
+    } else {
+      reportHtml = String(linkedReport)
+    }
+  } catch (_) {
+    reportHtml = String(linkedReport)
+  }
+
   const date = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   })
+  const engineLabel = engine === 'crewai' ? 'Powered by CrewAI (4 Agents)' : 'Powered by LangGraph'
 
   const summaryHtml = summary
     ? `<div class="tldr-box">
@@ -369,38 +382,61 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
     setExporting(true)
     let iframe = null
     try {
+      const markedModule = await import('marked')
+      const markedObj = markedModule.default || markedModule.marked || markedModule
+      const safeParse = (md) => {
+        try {
+          if (typeof markedObj.parse === 'function') return markedObj.parse(md, { gfm: true, breaks: true })
+          if (typeof markedObj === 'function') return markedObj(md, { gfm: true, breaks: true })
+          return String(md)
+        } catch {
+          return String(md)
+        }
+      }
+
+      const html = buildPDFDocument({
+        question: report.question,
+        summary: report.summary,
+        finalReport: normalizedReport,
+        sources: report.sources,
+        markedFn: safeParse,
+        engine: report.engine,
+      })
+
       iframe = document.createElement('iframe')
-      iframe.style.position = 'fixed'
-      iframe.style.right = '0'
-      iframe.style.bottom = '0'
-      iframe.style.width = '0'
-      iframe.style.height = '0'
-      iframe.style.border = '0'
+      iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;'
       document.body.appendChild(iframe)
 
-      const doc = iframe.contentWindow.document
-      doc.open()
-      doc.write(
-        buildPDFDocument({
-          question: report.question,
-          summary: report.summary,
-          finalReport: normalizedReport,
-          sources: report.sources,
-          markedFn: (md) => marked(md, { gfm: true, breaks: true }),
-        })
-      )
-      doc.close()
+      const doc = iframe.contentWindow?.document || iframe.contentDocument
+      if (doc) {
+        doc.open()
+        doc.write(html)
+        doc.close()
 
-      setTimeout(() => {
-        iframe.contentWindow.focus()
-        iframe.contentWindow.print()
         setTimeout(() => {
-          if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe)
-        }, 1000)
-      }, 500)
+          try {
+            iframe.contentWindow.focus()
+            iframe.contentWindow.print()
+            setTimeout(() => {
+              try { if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe) } catch (_) {}
+            }, 3000)
+          } catch (printErr) {
+            console.warn('Iframe print blocked, opening print popup window:', printErr)
+            const printWin = window.open('', '_blank')
+            if (printWin) {
+              printWin.document.write(html)
+              printWin.document.close()
+              printWin.focus()
+              printWin.print()
+            }
+          }
+        }, 500)
+      } else {
+        throw new Error('Unable to access print iframe')
+      }
     } catch (err) {
       console.error('PDF export failed:', err)
-      toast.error('Could not generate PDF print view. Please use Markdown export.', {
+      toast.error('Could not generate PDF. Please use "Download .md" instead.', {
         title: 'PDF Export Failed',
       })
     } finally {
