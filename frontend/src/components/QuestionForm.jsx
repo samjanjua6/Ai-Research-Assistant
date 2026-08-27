@@ -1,5 +1,40 @@
 import { useState, useCallback, useEffect } from 'react'
-import { Sparkles, Square, RotateCcw, ArrowRight, AlertTriangle } from 'lucide-react'
+import {
+  Sparkles,
+  Square,
+  RotateCcw,
+  ArrowRight,
+  AlertTriangle,
+  Microscope,
+  GitCompare,
+  ShieldAlert,
+  Lightbulb,
+  Users,
+  Network,
+  History,
+} from 'lucide-react'
+
+const COMMAND_LENSES = [
+  { id: 'deep', label: 'Deep Dive', prefix: '/DEEP', Icon: Microscope, placeholder: '"Topic to analyze in depth"' },
+  { id: 'angle', label: 'Compare', prefix: '/ANGLE', Icon: GitCompare, placeholder: '"Tech A" vs "Tech B"' },
+  { id: 'challenge', label: 'Stress Test', prefix: '/CHALLENGE', Icon: ShieldAlert, placeholder: '"Topic to find contradictions & white spots"' },
+  { id: 'hyp', label: 'Hypotheses', prefix: '/HYP', Icon: Lightbulb, placeholder: '"Frontier domain for non-obvious hypotheses"' },
+  { id: 'voices', label: 'Stakeholders', prefix: '/VOICES', Icon: Users, placeholder: '"Topic to map stakeholder positions"' },
+  { id: 'artefact', label: 'Mind-Map', prefix: '/ARTEFACT mind-map', Icon: Network, placeholder: '"Topic for Mermaid concept hierarchy"' },
+  { id: 'timeline', label: 'Timeline', prefix: '/TIMELINE', Icon: History, placeholder: '"Evolution & milestones of topic"' },
+]
+
+const PLACEHOLDER_PATTERNS = [
+  'topic to analyze in depth',
+  'tech a',
+  'tech b',
+  'topic to find contradictions',
+  'frontier domain for non-obvious',
+  'topic to map stakeholder',
+  'topic for mermaid concept',
+  'evolution & milestones',
+  'alternative',
+]
 
 export default function QuestionForm({ onSubmit, onStop, isLoading, error, initialQuestion }) {
   const [value, setValue] = useState(initialQuestion || '')
@@ -22,6 +57,37 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
     onSubmit(q)
   }, [value, onSubmit])
 
+  const handleSelectLens = (lens) => {
+    const current = value.trim()
+    // Strip existing slash command prefix
+    const body = current.replace(/^\/(?:DEEP|ANGLE|CHALLENGE|HYP|VOICES|ARTEFACT(?:\s+[a-zA-Z0-9_-]+)?|TIMELINE|MIX|SCAN)\s*/i, '').trim()
+
+    // Check if the current body is empty or just contains generic placeholder strings
+    const isPlaceholder = !body || PLACEHOLDER_PATTERNS.some((p) => body.toLowerCase().includes(p))
+
+    if (isPlaceholder) {
+      setValue(`${lens.prefix} ${lens.placeholder}`)
+      return
+    }
+
+    if (lens.prefix === '/ANGLE') {
+      if (/\b(?:vs\.?|versus|against)\b/i.test(body)) {
+        setValue(`/ANGLE ${body}`)
+      } else {
+        const cleanTopic = body.replace(/^"|"$/g, '').trim()
+        setValue(`/ANGLE "${cleanTopic}" vs "Alternative"`)
+      }
+    } else {
+      // Switching to a single-topic lens: strip 'vs ...' if coming from an angle comparison
+      let singleTopic = body
+      if (/\b(?:vs\.?|versus|against)\b/i.test(body)) {
+        singleTopic = body.split(/\b(?:vs\.?|versus|against)\b/i)[0].trim()
+      }
+      singleTopic = singleTopic.replace(/^"|"$/g, '').trim()
+      setValue(`${lens.prefix} "${singleTopic}"`)
+    }
+  }
+
   return (
     <div className="card">
       <div className="eyebrow">Ask a research question</div>
@@ -43,40 +109,23 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
             Analytical Command Lenses
           </span>
           <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>
-            Click to activate methodological lens
+            Select lens to direct research angle
           </span>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {[
-            { label: 'Deep Dive', prefix: '/DEEP', icon: '🔬', placeholder: 'Topic to analyze in depth' },
-            { label: 'Compare', prefix: '/ANGLE', icon: '⚖️', placeholder: '"Tech A" vs "Tech B"' },
-            { label: 'Stress Test', prefix: '/CHALLENGE', icon: '⚡', placeholder: 'Topic to find contradictions & white spots' },
-            { label: 'Hypotheses', prefix: '/HYP', icon: '💡', placeholder: 'Frontier domain for non-obvious hypotheses' },
-            { label: 'Stakeholders', prefix: '/VOICES', icon: '👥', placeholder: 'Controversial topic to map stakeholder positions' },
-            { label: 'Mind-Map', prefix: '/ARTEFACT mind-map', icon: '🗺️', placeholder: 'Topic for Mermaid concept hierarchy' },
-            { label: 'Timeline', prefix: '/TIMELINE', icon: '⏱️', placeholder: 'Evolution & milestones of topic' },
-          ].map((l, idx) => {
+          {COMMAND_LENSES.map((l) => {
             const isActive = value.trim().toUpperCase().startsWith(l.prefix.toUpperCase())
+            const Icon = l.Icon
             return (
               <button
-                key={idx}
+                key={l.id}
                 type="button"
-                onClick={() => {
-                  const current = value.trim()
-                  const cleaned = current.replace(/^\/(?:DEEP|ANGLE|CHALLENGE|HYP|VOICES|ARTEFACT(?:\s+[a-zA-Z0-9_-]+)?|TIMELINE|MIX|SCAN)\s*/i, '').trim()
-                  if (!cleaned) {
-                    setValue(`${l.prefix} ${l.placeholder}`)
-                  } else if (l.prefix === '/ANGLE' && !cleaned.toLowerCase().includes(' vs ')) {
-                    setValue(`/ANGLE "${cleaned}" vs "Alternative"`)
-                  } else {
-                    setValue(`${l.prefix} ${cleaned}`)
-                  }
-                }}
+                onClick={() => handleSelectLens(l)}
                 style={{
                   fontSize: '11.5px',
                   fontWeight: 600,
-                  padding: '4px 9px',
+                  padding: '5px 10px',
                   borderRadius: 6,
                   border: `1px solid ${isActive ? 'var(--violet)' : 'var(--border)'}`,
                   backgroundColor: isActive ? 'rgba(124, 106, 240, 0.12)' : 'var(--panel-alt)',
@@ -84,12 +133,12 @@ export default function QuestionForm({ onSubmit, onStop, isLoading, error, initi
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 5,
+                  gap: 6,
                   transition: 'all 0.15s ease',
                 }}
                 title={`Apply ${l.prefix} analytical lens`}
               >
-                <span>{l.icon}</span>
+                <Icon size={13} strokeWidth={2} />
                 <span>{l.label}</span>
               </button>
             )

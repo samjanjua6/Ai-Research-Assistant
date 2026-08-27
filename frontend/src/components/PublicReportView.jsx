@@ -738,15 +738,19 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                                     <span
                                       key={sIdx}
                                       style={{
-                                        fontSize: '10px',
-                                        padding: '2px 6px',
+                                        fontSize: '10.5px',
+                                        padding: '2px 7px',
                                         borderRadius: 4,
                                         backgroundColor: 'var(--panel)',
                                         border: '1px solid var(--border)',
                                         color: 'var(--text-faint)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 4,
                                       }}
                                     >
-                                      ✓ {sig}
+                                      <Check size={10} strokeWidth={2.5} style={{ color: '#10b981' }} />
+                                      <span>{sig}</span>
                                     </span>
                                   ))}
                                 </div>

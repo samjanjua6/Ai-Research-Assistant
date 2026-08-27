@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Copy, Check, ExternalLink } from 'lucide-react'
+import { Copy, Check, ExternalLink, AlertTriangle, HelpCircle } from 'lucide-react'
 import { toast } from '../context/ToastContext'
 
 /**
@@ -101,7 +101,8 @@ export function ConfidenceBadge({ type }) {
           : 'Limited literature data available on this specific aspect.'
       }
     >
-      <span>⚠ {isVerification ? 'Verification Needed' : 'Incomplete Data'}</span>
+      {isVerification ? <AlertTriangle size={12} strokeWidth={2.2} /> : <HelpCircle size={12} strokeWidth={2.2} />}
+      <span>{isVerification ? 'Verification Needed' : 'Incomplete Data'}</span>
     </span>
   )
 }
