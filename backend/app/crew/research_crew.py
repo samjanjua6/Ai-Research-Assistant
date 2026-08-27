@@ -142,17 +142,35 @@ async def run_crew_research(
 
         loop = asyncio.get_event_loop()
         crew_output = await loop.run_in_executor(None, crew.kickoff)
-        final_report_text = str(getattr(crew_output, "raw", crew_output)).strip()
+        raw_output_text = str(getattr(crew_output, "raw", crew_output)).strip()
+
+        # Sanitize <think> tags, reasoning meta-scratchpads, and internal agent chatter
+        def _clean_crew_text(text: str) -> str:
+            if not text:
+                return ""
+            c = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE)
+            c = re.sub(r"<thought>[\s\S]*?</thought>", "", c, flags=re.IGNORECASE)
+            c = re.sub(r"^<think>[\s\S]*?(?:</think>|\n\n#)", "", c, flags=re.IGNORECASE)
+            c = re.sub(r"^<think>.*?$", "", c, flags=re.MULTILINE)
+            c = re.sub(
+                r"^(?:Here'?s\s+a\s+thinking\s+process[^\n]*\n*|1\.\s*Analyze\s+the\s+Request:[^\n]*\n*)+",
+                "",
+                c.strip(),
+                flags=re.IGNORECASE,
+            )
+            return c.strip()
+
+        final_report_text = _clean_crew_text(raw_output_text)
 
         # Extract or generate a clean 2-sentence TL;DR executive summary
         summary_text = ""
         summary_match = re.search(r"##\s*Executive Summary\s*\n+([^\n#]+(?:\n[^\n#]+)?)", final_report_text, re.IGNORECASE)
         if summary_match:
-            summary_text = summary_match.group(1).strip()
+            summary_text = _clean_crew_text(summary_match.group(1).strip())
         else:
             lines = [l.strip() for l in final_report_text.splitlines() if l.strip() and not l.startswith("#")]
             summary_text = " ".join(lines[:2]) if lines else "Research investigation completed."
-        summary_text = summary_text[:500]
+        summary_text = _clean_crew_text(summary_text)[:500]
 
         # Extract follow up questions if present
         follow_up_questions = [

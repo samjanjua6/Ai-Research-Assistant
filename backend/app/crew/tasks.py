@@ -101,17 +101,18 @@ def create_review_and_audit_task(
     description = (
         f"Conduct a rigorous peer review of the drafted report for inquiry: \"{inquiry}\".\n"
         "Your objectives:\n"
-        "1. Verify that every factual claim is strictly supported by citations.\n"
-        "2. Tag major claims with confidence ratings based on source agreement:\n"
-        "   - [Confidence: High] for multi-source consensus or authoritative verified data.\n"
-        "   - [Confidence: Medium] for single-source or emerging industry data.\n"
-        "   - [Confidence: Low] for unverified, speculative, or conflicting claims.\n"
-        "3. Ensure the Executive Summary is concise and punchy.\n"
-        "4. Append a '## Recommended Next Investigation Steps' section with 3 actionable follow-up questions."
+        "1. Verify that factual claims are strictly supported by citations ([1], [2], [Doc: ...], [URL: ...]).\n"
+        "2. Tag major claims with inline confidence ratings: [Confidence: High], [Confidence: Medium], or [Confidence: Low].\n"
+        "3. Ensure the report has a clear '## Executive Summary' at the top.\n"
+        "4. Append a '## Recommended Next Investigation Steps' section with 3 actionable follow-up questions.\n\n"
+        "CRITICAL OUTPUT INSTRUCTIONS:\n"
+        "- Return the FULL, PUBLISH-READY RESEARCH REPORT in clean Markdown starting directly with '# <Title>' and '## Executive Summary'.\n"
+        "- Do NOT write a meta-review, thinking scratchpad, or '1. Analyze the Request' breakdown.\n"
+        "- Do NOT output <think> tags or preliminary deliberation. Deliver the complete finalized article."
     )
     return Task(
         description=description,
-        expected_output="The finalized, audited research report in clean Markdown with confidence tags and follow-up investigation questions.",
+        expected_output="The complete, finalized research report in clean Markdown with inline [Confidence: High/Medium/Low] tags and follow-up questions.",
         agent=agent,
         context=[synthesis_task_ref],
         callback=callback,

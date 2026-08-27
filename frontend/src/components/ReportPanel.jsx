@@ -8,6 +8,7 @@ import {
   countCitationFrequencies,
   extractDomain,
   getFaviconUrl,
+  cleanThinkTags,
   CitationBadge,
   ConfidenceBadge,
   DocCitationBadge,
@@ -246,22 +247,28 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
   const markdownComponents = useMemo(
     () => ({
       a: ({ href, children, ...props }) => {
-        if (typeof children === 'string' && children.startsWith('cite:')) {
-          const parts = children.split(':')
+        const childText = Array.isArray(children)
+          ? children.map((c) => (typeof c === 'string' ? c : (c?.props?.children || ''))).join('')
+          : (typeof children === 'string' ? children : String(children || ''))
+
+        if (childText.startsWith('cite:')) {
+          const parts = childText.split(':')
           const num = parseInt(parts[1], 10)
           const url = decodeURIComponent(parts.slice(2).join(':') || '')
           return <CitationBadge num={num} url={url} sourcePrefix="source" />
         }
-        if (typeof children === 'string' && children.startsWith('confidence:')) {
-          const type = children.replace('confidence:', '')
-          return <ConfidenceBadge type={type} />
+        if (childText.startsWith('confidence:')) {
+          const parts = childText.split(':')
+          const type = parts[1] || 'medium'
+          const label = parts[2] ? decodeURIComponent(parts[2]) : null
+          return <ConfidenceBadge type={type} label={label} />
         }
-        if (typeof children === 'string' && children.startsWith('doc-cite:')) {
-          const label = decodeURIComponent(children.replace('doc-cite:', ''))
+        if (childText.startsWith('doc-cite:')) {
+          const label = decodeURIComponent(childText.replace('doc-cite:', ''))
           return <DocCitationBadge label={label} />
         }
-        if (typeof children === 'string' && children.startsWith('url-cite:')) {
-          const label = decodeURIComponent(children.replace('url-cite:', ''))
+        if (childText.startsWith('url-cite:')) {
+          const label = decodeURIComponent(childText.replace('url-cite:', ''))
           return <UrlCitationBadge label={label} />
         }
         return (
@@ -615,7 +622,7 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
               )}
             </button>
           </div>
-          <p>{report.summary}</p>
+          <p>{cleanThinkTags(report.summary)}</p>
         </div>
       )}
 

@@ -1,5 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
-import { Copy, Check, ExternalLink, AlertTriangle, HelpCircle, FileText, Globe } from 'lucide-react'
+import {
+  Copy,
+  Check,
+  ExternalLink,
+  AlertTriangle,
+  HelpCircle,
+  FileText,
+  Globe,
+  CheckCircle2,
+  AlertCircle,
+  ShieldCheck,
+} from 'lucide-react'
 import { toast } from '../context/ToastContext'
 
 /**
@@ -42,8 +53,21 @@ export function countCitationFrequencies(text) {
 }
 
 /**
+ * Clean reasoning model thoughts and think tags.
+ */
+export function cleanThinkTags(text) {
+  if (!text) return ''
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/^<think>[\s\S]*?(?:<\/think>|\n\n#)/gi, '')
+    .replace(/^<think>.*?$/gm, '')
+    .replace(/^(?:Here's a thinking process[^\n]*\n*|1\.\s*Analyze the Request[^\n]*\n*)/gi, '')
+    .trim()
+}
+
+/**
  * Preprocess markdown text to convert citation brackets [1], [2], [1, 2],
- * confidence tags [Verification Needed], [Incomplete Data],
+ * confidence tags [Confidence: High], [Confidence: Medium], [Confidence: Low],
  * document citations [Doc: filename, p. X],
  * and web citations [URL: Title]
  * into custom markdown links that react-markdown can intercept.
@@ -51,10 +75,18 @@ export function countCitationFrequencies(text) {
 export function linkifyCitations(text, sources = []) {
   if (!text) return ''
 
-  // Preprocess confidence markers, doc citations & URL citations
-  let processed = text
-    .replace(/\[Verification Needed\]/gi, '[confidence:verification-needed](#confidence)')
-    .replace(/\[Incomplete Data\]/gi, '[confidence:incomplete-data](#confidence)')
+  // 1. Strip raw <think> tags if leaked by reasoning models
+  let processed = cleanThinkTags(text)
+
+  // 2. Preprocess confidence markers
+  processed = processed
+    .replace(/\[\s*Confidence:\s*(High|Medium|Low|High\/Medium|Low\/Medium)(?:\s*[-–—]\s*([^\]]+))?\s*\]/gi, (match, level, extra) => {
+      const tag = level.toLowerCase().replace(/[^a-z]/g, '-')
+      const label = extra ? `${level} (${extra.trim()})` : `${level} Confidence`
+      return `[confidence:${tag}:${encodeURIComponent(label)}](#confidence)`
+    })
+    .replace(/\[Verification Needed\]/gi, '[confidence:verification-needed:Verification%20Needed](#confidence)')
+    .replace(/\[Incomplete Data\]/gi, '[confidence:incomplete-data:Incomplete%20Data](#confidence)')
     .replace(/\[Doc:\s*([^\]]+)\]/gi, (match, label) => {
       const encoded = encodeURIComponent(label.trim())
       return `[doc-cite:${encoded}](#doc-cite)`
@@ -64,6 +96,7 @@ export function linkifyCitations(text, sources = []) {
       return `[url-cite:${encoded}](#url-cite)`
     })
 
+  // 3. Preprocess numeric citation brackets [1], [2], [1, 2]
   return processed.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (match, numString) => {
     const numbers = numString
       .split(/\s*,\s*/)
@@ -84,35 +117,51 @@ export function linkifyCitations(text, sources = []) {
 }
 
 /**
- * ConfidenceBadge component — rendered for [confidence:type] markers.
+ * ConfidenceBadge component — rendered for [confidence:type:label] markers.
  */
-export function ConfidenceBadge({ type }) {
-  const isVerification = type === 'verification-needed'
+export function ConfidenceBadge({ type, label }) {
+  const t = (type || '').toLowerCase()
+  const isHigh = t === 'high' || t.includes('high')
+  const isLow = t === 'low' || t.includes('low')
+  const isVerification = t.includes('verification')
+
+  const bgColor = isHigh
+    ? 'rgba(16, 185, 129, 0.12)'
+    : isLow
+    ? 'rgba(244, 63, 94, 0.12)'
+    : 'rgba(245, 158, 11, 0.12)'
+
+  const textColor = isHigh ? '#10b981' : isLow ? '#f43f5e' : '#f59e0b'
+  const borderColor = isHigh
+    ? 'rgba(16, 185, 129, 0.35)'
+    : isLow
+    ? 'rgba(244, 63, 94, 0.35)'
+    : 'rgba(245, 158, 11, 0.35)'
+
+  const Icon = isHigh ? CheckCircle2 : isLow ? AlertTriangle : isVerification ? AlertTriangle : AlertCircle
+  const displayLabel = label || (isHigh ? 'High Confidence' : isLow ? 'Low Confidence' : 'Medium Confidence')
+
   return (
     <span
-      className="confidence-badge"
+      className="confidence-badge animate-in"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: 4,
-        padding: '2px 7px',
+        padding: '2px 8px',
         borderRadius: 6,
         fontSize: '11px',
-        fontWeight: 600,
-        backgroundColor: isVerification ? 'rgba(245, 158, 11, 0.12)' : 'rgba(100, 116, 139, 0.12)',
-        color: isVerification ? '#f59e0b' : '#94a3b8',
-        border: `1px solid ${isVerification ? 'rgba(245, 158, 11, 0.3)' : 'rgba(100, 116, 139, 0.3)'}`,
+        fontWeight: 700,
+        backgroundColor: bgColor,
+        color: textColor,
+        border: `1px solid ${borderColor}`,
         margin: '0 3px',
         verticalAlign: 'middle',
       }}
-      title={
-        isVerification
-          ? 'Preliminary or disputed claim — independent verification recommended.'
-          : 'Limited literature data available on this specific aspect.'
-      }
+      title={`Empirical confidence level assessed by Peer Review Auditor: ${displayLabel}`}
     >
-      {isVerification ? <AlertTriangle size={12} strokeWidth={2.2} /> : <HelpCircle size={12} strokeWidth={2.2} />}
-      <span>{isVerification ? 'Verification Needed' : 'Incomplete Data'}</span>
+      <Icon size={11.5} strokeWidth={2.4} />
+      <span>{displayLabel}</span>
     </span>
   )
 }
