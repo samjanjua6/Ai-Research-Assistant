@@ -6,6 +6,7 @@ Uses Groq high-speed inference matching the project's model settings.
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 from app.core.config import get_settings
 
@@ -13,7 +14,7 @@ from app.core.config import get_settings
 os.environ["CREWAI_TELEMETRY_OPT_OUT"] = "true"
 os.environ["CREWAI_TRACING_ENABLED"] = "false"
 
-# Ensure LiteLLM strips cache_breakpoint for Groq compatibility
+# Ensure LiteLLM strips cache_breakpoint for Groq compatibility and retries safely on TPM limits
 try:
     import litellm
     litellm.drop_params = True
@@ -28,6 +29,23 @@ try:
         return _orig_transform_messages(self, messages, model, is_async=is_async)
 
     GroqChatConfig._transform_messages = _safe_groq_transform_messages
+
+    _orig_completion = litellm.completion
+    def _rate_limit_safe_completion(*args: Any, **kwargs: Any) -> Any:
+        for attempt in range(8):
+            try:
+                return _orig_completion(*args, **kwargs)
+            except litellm.RateLimitError:
+                time.sleep(3.0)
+            except Exception as e:
+                err_str = str(e).lower()
+                if "rate_limit" in err_str or "429" in err_str or "tpm" in err_str:
+                    time.sleep(3.0)
+                else:
+                    raise e
+        return _orig_completion(*args, **kwargs)
+
+    litellm.completion = _rate_limit_safe_completion
 except Exception:
     pass
 

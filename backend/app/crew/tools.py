@@ -29,25 +29,14 @@ def build_crew_tools(
     sources_collector = collected_sources if collected_sources is not None else []
 
     @tool("Search Live Web")
-    def search_live_web(query: str) -> str:
+    def search_live_web(query: str, **kwargs: Any) -> str:
         """
         Search the open web using DuckDuckGo and rank results across 5 credibility pillars
         (domain authority, fresh recency, semantic relevance, content richness, exact match).
         Returns top verified snippets with source indexes [1], [2], etc.
         """
         try:
-            # Run async search synchronously for CrewAI tool loop
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    import concurrent.futures
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        raw_results = executor.submit(asyncio.run, search_duckduckgo(query, max_results=6)).result()
-                else:
-                    raw_results = loop.run_until_complete(search_duckduckgo(query, max_results=6))
-            except Exception:
-                raw_results = asyncio.run(search_duckduckgo(query, max_results=6))
-
+            raw_results = search_duckduckgo(query, step="crew_scout", max_results=6)
             ranked = rank_and_filter_results(raw_results, query, top_k=4)
             if not ranked:
                 return f"No verified web results found for query: '{query}'"
@@ -79,7 +68,7 @@ def build_crew_tools(
             return f"Error executing web search: {str(exc)}"
 
     @tool("Search Attached Documents")
-    def search_attached_documents(query: str) -> str:
+    def search_attached_documents(query: str, **kwargs: Any) -> str:
         """
         Extract relevant paragraphs from user-uploaded PDF, DOCX, TXT, or MD documents
         using BM25 semantic section scoring.
@@ -93,7 +82,7 @@ def build_crew_tools(
             return f"Error reading attached documents: {str(exc)}"
 
     @tool("Read Grounded Web URLs")
-    def read_grounded_urls(inquiry: str) -> str:
+    def read_grounded_urls(inquiry: str = "", **kwargs: Any) -> str:
         """
         Retrieve clean, extracted text from grounded web URLs (e.g. arXiv papers, GitHub repos, Wikipedia articles).
         """
