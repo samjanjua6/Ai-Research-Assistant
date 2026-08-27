@@ -30,17 +30,19 @@ try:
 
     GroqChatConfig._transform_messages = _safe_groq_transform_messages
 
+    import re
     _orig_completion = litellm.completion
+
     def _rate_limit_safe_completion(*args: Any, **kwargs: Any) -> Any:
-        for attempt in range(8):
+        for attempt in range(12):
             try:
                 return _orig_completion(*args, **kwargs)
-            except litellm.RateLimitError:
-                time.sleep(3.0)
             except Exception as e:
                 err_str = str(e).lower()
-                if "rate_limit" in err_str or "429" in err_str or "tpm" in err_str:
-                    time.sleep(3.0)
+                if isinstance(e, litellm.RateLimitError) or "rate_limit" in err_str or "429" in err_str or "tpm" in err_str:
+                    match = re.search(r"try again in ([\d\.]+)s", str(e))
+                    sleep_sec = (float(match.group(1)) + 1.0) if match else 4.0
+                    time.sleep(sleep_sec)
                 else:
                     raise e
         return _orig_completion(*args, **kwargs)

@@ -27,6 +27,7 @@ def create_methodologist_agent(llm: Any) -> Agent:
             "non-obvious investigative angles, and outlining precise literature search queries."
         ),
         llm=llm,
+        max_iter=3,
         verbose=True,
         allow_delegation=False,
     )
@@ -47,6 +48,7 @@ def create_scout_agent(llm: Any, tools: list[Any]) -> Agent:
         ),
         tools=tools,
         llm=llm,
+        max_iter=3,
         verbose=True,
         allow_delegation=False,
     )
@@ -66,6 +68,7 @@ def create_synthesizer_agent(llm: Any) -> Agent:
             "fluff-free scientific syntheses that integrate disparate findings into structured, readable reports."
         ),
         llm=llm,
+        max_iter=3,
         verbose=True,
         allow_delegation=False,
     )
@@ -85,6 +88,7 @@ def create_auditor_agent(llm: Any) -> Agent:
             "unsubstantiated claims, ensure claims match their citations, and provide constructive critique."
         ),
         llm=llm,
+        max_iter=3,
         verbose=True,
         allow_delegation=False,
     )
