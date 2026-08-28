@@ -15,6 +15,7 @@ from sqlalchemy import text
 from app.api.routes import router as research_router, public_router
 from app.api.auth import router as auth_router
 from app.api.admin import router as admin_router
+from app.api.trending import router as trending_router
 from app.core.config import get_settings
 from app.core.logging import setup_logging, get_logger
 from app.db.crud import get_run_by_share_token
@@ -113,6 +114,7 @@ app.add_middleware(
 # ── API routes ────────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(trending_router)
 app.include_router(research_router)
 app.include_router(public_router)
 

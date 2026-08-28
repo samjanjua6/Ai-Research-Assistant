@@ -424,3 +424,28 @@ export async function fetchAdminServerMetrics() {
   return res.json()
 }
 
+// ── Trending Topics endpoints ─────────────────────────────────────
+
+export async function fetchTrendingTopics({ category = '', refresh = false, offset = 0, count = 4 } = {}) {
+  const params = new URLSearchParams({ count, offset })
+  if (category && category !== 'all') params.append('category', category)
+  if (refresh) params.append('refresh', 'true')
+
+  const res = await fetch(`${BASE}/research/trending-topics?${params.toString()}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function fetchWildcardPrompt() {
+  const res = await fetch(`${BASE}/research/trending-topics/wildcard`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+
