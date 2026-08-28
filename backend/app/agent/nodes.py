@@ -26,6 +26,7 @@ from app.agent.methodologist import (
 )
 from app.core.config import get_settings
 from app.core.events import publish_event
+from app.core.guardrails import sanitize_untrusted_evidence, sanitize_output_leakage
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -244,12 +245,13 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
     if docs:
         doc_text = score_and_extract_relevant_sections(docs, state["question"], max_chars=30000)
         if doc_text:
+            doc_text = sanitize_untrusted_evidence(doc_text)
             doc_evidence = (
                 "=== GROUNDED USER ATTACHED DOCUMENTS EVIDENCE ===\n"
                 "The user provided the following grounded document passages. "
                 "Synthesize findings from both these documents and external web searches. "
                 "Cite document evidence inline as [Doc: <filename>, p. <page_number>] or [Doc: <filename>].\n\n"
-                f"{doc_text}\n\n"
+                f"<untrusted_evidence>\n{doc_text}\n</untrusted_evidence>\n\n"
                 "===================================================\n\n"
             )
 
@@ -258,21 +260,24 @@ async def draft_report(state: GraphState) -> dict[str, Any]:
     if urls:
         url_text = format_grounded_urls_for_context(urls, max_chars=30000)
         if url_text:
+            url_text = sanitize_untrusted_evidence(url_text)
             url_evidence = (
                 "=== GROUNDED USER ATTACHED URL REFERENCES EVIDENCE ===\n"
                 "The user provided the following grounded URL article passages. "
                 "Synthesize findings from these web pages alongside other evidence. "
                 "Cite evidence from these web references inline as [URL: <Page/Article Title>] or [URL: <domain>].\n\n"
-                f"{url_text}\n\n"
+                f"<untrusted_evidence>\n{url_text}\n</untrusted_evidence>\n\n"
                 "========================================================\n\n"
             )
 
+    sanitized_context = sanitize_untrusted_evidence(context)
+
     human = (
-        f"Research inquiry: {state['question']}\n\n"
+        f"Research inquiry: <user_inquiry>{state['question']}</user_inquiry>\n\n"
         f"{doc_evidence}"
         f"{url_evidence}"
         f"=== LIVE WEB SEARCH EVIDENCE ===\n"
-        f"{context}\n\n"
+        f"<untrusted_evidence>\n{sanitized_context}\n</untrusted_evidence>\n\n"
         "Write the structured research report:"
     )
 
@@ -425,8 +430,8 @@ async def finalize_report(state: GraphState) -> dict[str, Any]:
     follow_up_questions: list[dict[str, Any]] = []
     try:
         final: dict = json.loads(raw)
-        report = clean_markdown_tables(str(final.get("report", state["draft"])))
-        summary = str(final.get("summary", ""))
+        report = sanitize_output_leakage(clean_markdown_tables(str(final.get("report", state["draft"]))))
+        summary = sanitize_output_leakage(str(final.get("summary", "")))
         raw_follow_ups = final.get("follow_up_questions", [])
 
         if isinstance(raw_follow_ups, list):
@@ -445,7 +450,7 @@ async def finalize_report(state: GraphState) -> dict[str, Any]:
                     })
     except Exception as exc:
         logger.warning("finalize_parse_error", error=str(exc))
-        report = clean_markdown_tables(state["draft"])
+        report = sanitize_output_leakage(clean_markdown_tables(state["draft"]))
         summary = ""
 
     if not follow_up_questions or len(follow_up_questions) < 2:

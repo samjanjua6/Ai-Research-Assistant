@@ -17,7 +17,7 @@ import secrets
 import uuid
 from typing import Any, AsyncGenerator
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File, Request
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,11 @@ from app.agent.state import GraphState
 from app.agent.doc_parser import parse_uploaded_file
 from app.agent.url_fetcher import fetch_and_parse_url
 from app.core.events import publish_event, subscribe, unsubscribe
+from app.core.guardrails import (
+    validate_inquiry_guardrails,
+    sanitize_output_leakage,
+    sanitize_untrusted_evidence,
+)
 from app.db.crud import (
     create_run,
     get_run,
@@ -266,8 +271,8 @@ async def _run_graph(
     if cancel_event.is_set():
         return
 
-    final_report_text = accumulated.get("final_report", "")
-    summary_text = accumulated.get("summary", "")
+    final_report_text = sanitize_output_leakage(accumulated.get("final_report", ""))
+    summary_text = sanitize_output_leakage(accumulated.get("summary", ""))
     sources_list = accumulated.get("sources", [])
     follow_up_questions_list = accumulated.get("follow_up_questions", [])
     loop_count_num = accumulated.get("loop_count", 0)
@@ -349,6 +354,7 @@ async def fetch_url_for_context(
 async def start_research(
     body: StartRunRequest,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -386,6 +392,14 @@ async def start_research(
             for u in body.urls
         ]
 
+    # ── AI Guardrails & Prompt Security Validation ──
+    client_ip = request.client.host if request.client else None
+    guard_res = validate_inquiry_guardrails(
+        body.question,
+        user_id=str(current_user.id),
+        client_ip=client_ip,
+    )
+
     run = await create_run(
         db,
         question=body.question.strip(),
@@ -394,6 +408,48 @@ async def start_research(
         urls_metadata=url_meta_list,
         engine=body.engine or "langgraph",
     )
+
+    if not guard_res.is_safe:
+        # Intercept immediately: complete run with policy refusal without invoking LLM
+        await update_run_status(
+            db,
+            run.id,
+            RunStatus.done,
+            final_report=guard_res.refusal_report,
+            summary=guard_res.refusal_summary,
+            sources=[],
+            follow_up_questions=[],
+            loop_count=0,
+        )
+        await log_step(
+            db,
+            run_id=run.id,
+            step_name="guardrail_intercept",
+            loop_index=0,
+            payload={
+                "violation": guard_res.violation_type,
+                "message": "Inquiry intercepted by AI Security Guardrails.",
+            },
+        )
+        publish_event(
+            str(run.id),
+            "done",
+            {
+                "status": "done",
+                "engine": run.engine,
+                "summary": guard_res.refusal_summary,
+                "final_report": guard_res.refusal_report,
+                "sources": [],
+                "follow_up_questions": [],
+            },
+        )
+        logger.warning(
+            "research_guardrail_intercepted",
+            run_id=str(run.id),
+            user_id=str(current_user.id),
+            violation=guard_res.violation_type,
+        )
+        return {"run_id": str(run.id), "status": run.status, "engine": run.engine}
 
     if body.engine == "crewai":
         from app.crew.research_crew import run_crew_research

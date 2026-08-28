@@ -29,6 +29,7 @@ from app.crew.tasks import (
 )
 from app.crew.callbacks import CrewSSECallbackHandler
 from app.core.events import publish_event
+from app.core.guardrails import sanitize_output_leakage
 from app.core.logging import get_logger
 from app.db.crud import update_run_status, log_step
 from app.db.database import AsyncSessionLocal
@@ -187,6 +188,9 @@ async def run_crew_research(
             if url and url not in seen_urls:
                 seen_urls.add(url)
                 unique_sources.append(s)
+
+        final_report_text = sanitize_output_leakage(final_report_text)
+        summary_text = sanitize_output_leakage(summary_text)
 
         # 7. Persist to PostgreSQL
         async with AsyncSessionLocal() as db:

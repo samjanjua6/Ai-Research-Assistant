@@ -513,3 +513,24 @@ async def get_admin_server_metrics(
             "platform": platform.platform(),
         },
     }
+
+
+# ── 6. Security Telemetry & Guardrail Logs ───────────────────────────
+
+@router.get("/security-events")
+async def get_admin_security_events(
+    admin: User = Depends(get_admin_user),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """
+    Returns live security intercept logs: blocked prompt extractions,
+    jailbreak attempts, and injection signatures.
+    """
+    from app.core.guardrails import get_security_audit_events
+    events = get_security_audit_events(limit=limit)
+    return {
+        "status": "success",
+        "total": len(events),
+        "events": events,
+    }
+
