@@ -68,6 +68,35 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+    token: Optional[str] = Query(default=None, include_in_schema=False),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """
+    Resolve the current user from a Bearer JWT token if provided,
+    otherwise returns None for guest/unauthenticated requests.
+    """
+    raw_token: str | None = None
+
+    if credentials:
+        raw_token = credentials.credentials
+    elif token:
+        raw_token = token
+
+    if not raw_token:
+        return None
+
+    try:
+        payload = decode_access_token(raw_token)
+        user_id = uuid.UUID(payload["sub"])
+    except (jwt.PyJWTError, KeyError, ValueError):
+        return None
+
+    user = await get_user_by_id(db, user_id)
+    return user
+
+
 async def get_admin_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
@@ -88,4 +117,5 @@ async def get_admin_user(
         )
 
     return current_user
+
 
