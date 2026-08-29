@@ -247,7 +247,7 @@ export function ResearchLibraryHub({ onBackToWorkspace, onOpenRun }) {
   }
 
   return (
-    <div className="library-hub animate-in" style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%', maxWidth: 1300, margin: '0 auto' }}>
+    <div className="library-hub animate-in" style={{ display: 'flex', flexDirection: 'column', gap: 18, width: '100%', maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
       
       {/* ── Top Bar ── */}
       <div
@@ -256,40 +256,42 @@ export function ResearchLibraryHub({ onBackToWorkspace, onOpenRun }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '16px 22px',
+          padding: '14px 18px',
           flexWrap: 'wrap',
-          gap: 14,
+          gap: 12,
           background: 'linear-gradient(135deg, var(--panel), var(--panel-alt))',
           border: '1px solid var(--border)',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={onBackToWorkspace}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '13px', padding: '7px 12px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '12.5px', padding: '6px 10px', flexShrink: 0 }}
           >
             <ArrowLeft size={14} strokeWidth={2.2} /> Back to Workspace
           </button>
 
-          <div>
-            <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text)', margin: 0, letterSpacing: '-0.01em' }}>
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text)', margin: 0, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Research Library & Collections Hub
             </h1>
-            <p style={{ fontSize: '12px', color: 'var(--text-dim)', margin: '2px 0 0' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-dim)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Organize investigations into folders, star favorites, and synthesize cross-study Master Dossiers.
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={() => loadData(true)}
             disabled={refreshing}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '12px', padding: '7px 12px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '12px', padding: '6px 10px' }}
           >
             <RefreshCw size={13} strokeWidth={2} style={{ animation: refreshing ? 'spin 0.6s linear infinite' : 'none' }} />
             Refresh
@@ -299,7 +301,7 @@ export function ResearchLibraryHub({ onBackToWorkspace, onOpenRun }) {
             type="button"
             className="btn btn-primary"
             onClick={() => setShowNewFolderModal(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '12px', padding: '7px 14px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '12px', padding: '6px 12px' }}
           >
             <FolderPlus size={14} strokeWidth={2} /> New Folder
           </button>
@@ -307,7 +309,7 @@ export function ResearchLibraryHub({ onBackToWorkspace, onOpenRun }) {
       </div>
 
       {/* ── Main Layout: Sidebar + Main List ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 20, alignItems: 'start' }}>
+      <div className="library-layout-grid">
         
         {/* ── Left Sidebar Navigation ── */}
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -688,13 +690,13 @@ export function ResearchLibraryHub({ onBackToWorkspace, onOpenRun }) {
                     }}
                   >
                     {/* Card Header */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, width: '100%', minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, overflow: 'hidden' }}>
                         {/* Checkbox */}
                         <button
                           type="button"
                           onClick={(e) => toggleSelectRun(r.id, e)}
-                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: isSelected ? 'var(--violet)' : 'var(--text-faint)' }}
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: isSelected ? 'var(--violet)' : 'var(--text-faint)', flexShrink: 0 }}
                         >
                           {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
                         </button>
@@ -703,7 +705,7 @@ export function ResearchLibraryHub({ onBackToWorkspace, onOpenRun }) {
                         <button
                           type="button"
                           onClick={(e) => handleToggleBookmark(r.id, e)}
-                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: r.is_bookmarked ? '#f59e0b' : 'var(--text-faint)' }}
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: r.is_bookmarked ? '#f59e0b' : 'var(--text-faint)', flexShrink: 0 }}
                           title={r.is_bookmarked ? 'Remove Star' : 'Star Inquiry'}
                         >
                           <Star size={16} style={{ fill: r.is_bookmarked ? '#f59e0b' : 'none' }} />
@@ -713,7 +715,7 @@ export function ResearchLibraryHub({ onBackToWorkspace, onOpenRun }) {
                         <h3
                           onClick={() => onOpenRun?.(r.id, r.question)}
                           style={{
-                            fontSize: '14.5px',
+                            fontSize: '14px',
                             fontWeight: 700,
                             color: 'var(--text)',
                             margin: 0,
@@ -721,6 +723,8 @@ export function ResearchLibraryHub({ onBackToWorkspace, onOpenRun }) {
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
+                            minWidth: 0,
+                            flex: 1,
                           }}
                         >
                           {r.question}

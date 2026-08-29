@@ -288,7 +288,7 @@ export default function App() {
           }}
           engine={currentEngine}
         />
-        <main className="main-content" style={{ padding: '24px 20px', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+        <main className="main-content" style={{ padding: '20px 24px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
           <UsageAnalyticsDashboard
             onBackToWorkspace={() => {
               setIsAnalyticsView(false)
@@ -337,7 +337,7 @@ export default function App() {
           onOpenLibrary={() => {}}
           engine={currentEngine}
         />
-        <main className="main-content" style={{ padding: '24px 20px', maxWidth: 1300, margin: '0 auto', width: '100%' }}>
+        <main className="main-content" style={{ padding: '20px 24px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
           <ResearchLibraryHub
             onBackToWorkspace={() => {
               setIsLibraryView(false)

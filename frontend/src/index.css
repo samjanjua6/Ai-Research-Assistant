@@ -2601,5 +2601,26 @@ ul { list-style: none; padding: 0; margin: 0; }
   color: #ef4444 !important;
 }
 
+/* ── Library & Analytics Responsive Layouts ──────────────────────── */
+.library-layout-grid {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
 
+@media (max-width: 960px) {
+  .library-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
+.library-hub, .analytics-dashboard {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
