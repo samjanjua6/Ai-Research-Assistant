@@ -20,6 +20,7 @@ from app.api.analytics import router as analytics_router
 from app.api.library import router as library_router
 from app.api.report_chat import router as report_chat_router
 from app.api.discover import router as discover_router
+from app.api.settings import router as settings_router
 from app.core.config import get_settings
 from app.core.logging import setup_logging, get_logger
 from app.db.crud import get_run_by_share_token
@@ -165,6 +166,7 @@ app.include_router(analytics_router)
 app.include_router(library_router)
 app.include_router(report_chat_router)
 app.include_router(discover_router)
+app.include_router(settings_router)
 app.include_router(research_router)
 app.include_router(public_router)
 
@@ -263,6 +265,16 @@ async def serve_library_spa(full_path: str = ""):
 @app.get("/discover/{full_path:path}", include_in_schema=False)
 async def serve_discover_spa(full_path: str = ""):
     """Serve SPA index.html for direct navigation or hard-refresh on /discover routes."""
+    index_file = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse("<h1>Frontend build not found</h1>", status_code=404)
+
+
+@app.get("/settings", include_in_schema=False)
+@app.get("/settings/{full_path:path}", include_in_schema=False)
+async def serve_settings_spa(full_path: str = ""):
+    """Serve SPA index.html for direct navigation or hard-refresh on /settings routes."""
     index_file = os.path.join(frontend_dist, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)

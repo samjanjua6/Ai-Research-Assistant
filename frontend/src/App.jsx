@@ -17,6 +17,7 @@ import { AdminDashboard } from './components/admin/AdminDashboard'
 import { UsageAnalyticsDashboard } from './components/analytics/UsageAnalyticsDashboard'
 import { ResearchLibraryHub } from './components/library/ResearchLibraryHub'
 import PublicDiscoverShowcase from './components/discover/PublicDiscoverShowcase'
+import UserSettingsHub from './components/settings/UserSettingsHub'
 import { ErrorStateIllustration, EmptyState } from './components/illustrations/EmptyStateIllustrations'
 import { LogoMark } from './components/brand/Logo'
 
@@ -62,6 +63,15 @@ function getIsDiscoverPath() {
   )
 }
 
+function getIsSettingsPath() {
+  if (typeof window === 'undefined') return false
+  return (
+    window.location.pathname === '/settings' ||
+    window.location.pathname.startsWith('/settings/') ||
+    window.location.search.includes('view=settings')
+  )
+}
+
 function getMagicResetParams() {
   if (typeof window === 'undefined') return { email: '', code: '' }
   try {
@@ -104,6 +114,7 @@ export default function App() {
   const [isAnalyticsView,     setIsAnalyticsView]     = useState(getIsAnalyticsPath)
   const [isLibraryView,       setIsLibraryView]       = useState(getIsLibraryPath)
   const [isDiscoverView,      setIsDiscoverView]      = useState(getIsDiscoverPath)
+  const [isSettingsView,      setIsSettingsView]      = useState(getIsSettingsPath)
   const [magicReset,          setMagicReset]          = useState(getMagicResetParams)
   const [isSidebarCollapsed,  setIsSidebarCollapsed]  = useState(getInitialSidebarState)
   const [activeRunId,         setActiveRunId]         = useState(null)
@@ -173,6 +184,7 @@ export default function App() {
       setIsAnalyticsView(getIsAnalyticsPath())
       setIsLibraryView(getIsLibraryPath())
       setIsDiscoverView(getIsDiscoverPath())
+      setIsSettingsView(getIsSettingsPath())
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
@@ -305,6 +317,11 @@ export default function App() {
             setIsDiscoverView(true)
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/discover')
           }}
+          onOpenSettings={() => {
+            setIsAnalyticsView(false)
+            setIsSettingsView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/settings')
+          }}
           engine={currentEngine}
         />
         <main className="main-content" style={{ padding: '20px 24px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -359,6 +376,11 @@ export default function App() {
             setIsDiscoverView(true)
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/discover')
           }}
+          onOpenSettings={() => {
+            setIsLibraryView(false)
+            setIsSettingsView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/settings')
+          }}
           engine={currentEngine}
         />
         <main className="main-content" style={{ padding: '20px 24px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -408,6 +430,11 @@ export default function App() {
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/library')
           }}
           onOpenDiscover={() => {}}
+          onOpenSettings={() => {
+            setIsDiscoverView(false)
+            setIsSettingsView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/settings')
+          }}
           isDiscoverView={true}
           engine={currentEngine}
         />
@@ -442,6 +469,60 @@ export default function App() {
     )
   }
 
+  // If visiting user settings & BYOK hub (/settings)
+  if (isSettingsView) {
+    return (
+      <div className="app-layout" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Header
+          isSidebarCollapsed={true}
+          onToggleSidebar={() => {}}
+          onNewResearch={() => {
+            setIsSettingsView(false)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+            handleNewResearch()
+          }}
+          onOpenAdmin={() => {
+            setIsSettingsView(false)
+            setIsAdminView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/admin')
+          }}
+          onOpenAnalytics={() => {
+            setIsSettingsView(false)
+            setIsAnalyticsView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/analytics')
+          }}
+          onOpenLibrary={() => {
+            setIsSettingsView(false)
+            setIsLibraryView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/library')
+          }}
+          onOpenDiscover={() => {
+            setIsSettingsView(false)
+            setIsDiscoverView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/discover')
+          }}
+          onOpenSettings={() => {}}
+          isSettingsView={true}
+          engine={currentEngine}
+        />
+        <main className="main-content" style={{ padding: '20px 24px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+          <UserSettingsHub
+            onBackToWorkspace={() => {
+              setIsSettingsView(false)
+              if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+            }}
+            onChangePassword={() => {
+              // Trigger change password modal if needed
+            }}
+            onDeleteAccount={() => {
+              // Trigger delete account modal if needed
+            }}
+          />
+        </main>
+      </div>
+    )
+  }
+
   const isLoading  = phase === 'streaming'
   const hasRun     = phase !== 'idle' || steps.length > 0 || report !== null
   const showReport = phase === 'done' && report
@@ -466,11 +547,13 @@ export default function App() {
         onNewResearch={handleNewResearch}
         engine={currentEngine}
         isDiscoverView={isDiscoverView}
+        isSettingsView={isSettingsView}
         onOpenAdmin={() => {
           setIsAdminView(true)
           setIsAnalyticsView(false)
           setIsLibraryView(false)
           setIsDiscoverView(false)
+          setIsSettingsView(false)
           window.history.pushState({}, '', '/admin')
         }}
         onOpenAnalytics={() => {
@@ -478,6 +561,7 @@ export default function App() {
           setIsAdminView(false)
           setIsLibraryView(false)
           setIsDiscoverView(false)
+          setIsSettingsView(false)
           window.history.pushState({}, '', '/analytics')
         }}
         onOpenLibrary={() => {
@@ -485,6 +569,7 @@ export default function App() {
           setIsAdminView(false)
           setIsAnalyticsView(false)
           setIsDiscoverView(false)
+          setIsSettingsView(false)
           window.history.pushState({}, '', '/library')
         }}
         onOpenDiscover={() => {
@@ -492,7 +577,16 @@ export default function App() {
           setIsAdminView(false)
           setIsAnalyticsView(false)
           setIsLibraryView(false)
+          setIsSettingsView(false)
           window.history.pushState({}, '', '/discover')
+        }}
+        onOpenSettings={() => {
+          setIsSettingsView(true)
+          setIsAdminView(false)
+          setIsAnalyticsView(false)
+          setIsLibraryView(false)
+          setIsDiscoverView(false)
+          window.history.pushState({}, '', '/settings')
         }}
       />
 

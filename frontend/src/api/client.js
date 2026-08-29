@@ -816,3 +816,43 @@ export async function forkReportInquiry(runId, newLens, newQuestion) {
   return res.json()
 }
 
+// ── User Settings & BYOK Hub ───────────────────────────────────────
+
+export async function fetchUserSettings() {
+  const res = await fetch(`${BASE}/user/settings`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function updateUserSettings(settingsData) {
+  const res = await fetch(`${BASE}/user/settings`, {
+    method: 'PUT',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(settingsData),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function testProviderKey(provider, apiKey, model = null) {
+  const res = await fetch(`${BASE}/user/settings/test-key`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ provider, api_key: apiKey, model }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+

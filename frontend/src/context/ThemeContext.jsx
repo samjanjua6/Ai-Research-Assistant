@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
 const THEME_KEY = 'theme_preference'
+const ACCENT_KEY = 'accent_preference'
 
 const ThemeContext = createContext({
   theme: 'system',
   effectiveTheme: 'dark',
   setTheme: () => {},
+  accent: 'violet',
+  setAccent: () => {},
 })
 
 function getSystemTheme() {
@@ -22,6 +25,14 @@ export function ThemeProvider({ children }) {
     }
   })
 
+  const [accent, setAccentState] = useState(() => {
+    try {
+      return localStorage.getItem(ACCENT_KEY) || 'violet'
+    } catch {
+      return 'violet'
+    }
+  })
+
   const [systemTheme, setSystemTheme] = useState(getSystemTheme)
 
   // Compute the current active theme
@@ -32,6 +43,11 @@ export function ThemeProvider({ children }) {
     document.documentElement.setAttribute('data-theme', effectiveTheme)
   }, [effectiveTheme])
 
+  // Apply data-accent to document element whenever accent changes
+  useEffect(() => {
+    document.documentElement.setAttribute('data-accent', accent)
+  }, [accent])
+
   // Listen for OS system theme changes
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -39,7 +55,6 @@ export function ThemeProvider({ children }) {
       setSystemTheme(e.matches ? 'dark' : 'light')
     }
 
-    // Modern API with fallback
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener('change', handleChange)
     } else {
@@ -59,13 +74,18 @@ export function ThemeProvider({ children }) {
     setThemeState(newTheme)
     try {
       localStorage.setItem(THEME_KEY, newTheme)
-    } catch {
-      // Storage unavailable / quota exceeded
-    }
+    } catch {}
+  }, [])
+
+  const setAccent = useCallback((newAccent) => {
+    setAccentState(newAccent)
+    try {
+      localStorage.setItem(ACCENT_KEY, newAccent)
+    } catch {}
   }, [])
 
   return (
-    <ThemeContext.Provider value={{ theme, effectiveTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, effectiveTheme, setTheme, accent, setAccent }}>
       {children}
     </ThemeContext.Provider>
   )

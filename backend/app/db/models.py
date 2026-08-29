@@ -54,6 +54,9 @@ class User(Base):
     runs: Mapped[list["ResearchRun"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    settings: Mapped["UserSettings | None"] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
 
 
 # ── ResearchRun ───────────────────────────────────────────────────
@@ -246,5 +249,42 @@ class ReportChatMessage(Base):
 
     run: Mapped["ResearchRun"] = relationship()
     user: Mapped["User | None"] = relationship()
+
+
+# ── UserSettings ──────────────────────────────────────────────────
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    default_engine: Mapped[str] = mapped_column(String(32), default="langgraph", nullable=False)
+    default_lens: Mapped[str] = mapped_column(String(32), default="", nullable=False)
+    default_loops: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    custom_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    preferred_domains: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    theme_mode: Mapped[str] = mapped_column(String(20), default="system", nullable=False)
+    accent_color: Mapped[str] = mapped_column(String(20), default="violet", nullable=False)
+    email_on_complete: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    email_weekly_digest: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    custom_groq_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    custom_openai_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    custom_anthropic_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    custom_openrouter_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    custom_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+
+    user: Mapped["User"] = relationship(back_populates="settings")
+
 
 

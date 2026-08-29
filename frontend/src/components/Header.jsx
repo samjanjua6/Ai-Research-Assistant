@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck, Users, Zap, Sparkles, BarChart2, Folder, BookOpen, Compass } from 'lucide-react'
+import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck, Users, Zap, Sparkles, BarChart2, Folder, BookOpen, Compass, Settings, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { DeleteAccountModal } from './DeleteAccountModal'
@@ -16,6 +16,7 @@ export default function Header({
   onOpenAnalytics,
   onOpenLibrary,
   onOpenDiscover,
+  onOpenSettings,
   isDiscoverView,
   engine,
 }) {
@@ -328,6 +329,33 @@ export default function Header({
                   >
                     <BarChart2 size={13} strokeWidth={2} style={{ color: 'var(--violet)' }} />
                     <span>Usage & Analytics</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="dropdown-item"
+                    onClick={() => {
+                      setShowUserMenu(false)
+                      onOpenSettings?.()
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      fontSize: '12.5px',
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      cursor: 'pointer',
+                      marginBottom: 2,
+                    }}
+                  >
+                    <Settings size={13} strokeWidth={2} style={{ color: 'var(--amber)' }} />
+                    <span>Settings & BYOK</span>
                   </button>
 
                   <button

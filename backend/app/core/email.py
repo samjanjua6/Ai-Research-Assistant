@@ -399,3 +399,107 @@ async def send_account_deleted_email(to_email: str, user_name: str = "there") ->
     except Exception as exc:
         logger.warning("account_deleted_email_failed", email=to_email, error=str(exc))
         return False
+
+
+def _build_research_completed_html(
+    user_name: str,
+    question: str,
+    summary: str,
+    sources_count: int,
+    report_url: str,
+) -> str:
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Research Investigation Completed</title>
+    </head>
+    <body style="margin: 0; padding: 30px 15px; background-color: #0c0d12; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f1f5f9;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 540px; background-color: #161822; border-radius: 14px; border: 1px solid #282b3d; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);">
+        <!-- Header -->
+        <tr>
+          <td style="padding: 28px 32px; background: linear-gradient(135deg, rgba(124, 106, 240, 0.18) 0%, rgba(6, 182, 212, 0.12) 100%); border-bottom: 1px solid #282b3d; text-align: center;">
+            <div style="display: inline-block; padding: 8px 14px; background: rgba(124, 106, 240, 0.2); border-radius: 20px; font-size: 12px; font-weight: 700; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+              Investigation Complete
+            </div>
+            <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff;">
+              Deep Research Synthesis Ready
+            </h1>
+          </td>
+        </tr>
+
+        <!-- Content -->
+        <tr>
+          <td style="padding: 28px 32px;">
+            <p style="margin: 0 0 16px; font-size: 14.5px; line-height: 1.6; color: #94a3b8;">
+              Hi <strong style="color: #f1f5f9;">{user_name}</strong>,<br>
+              Your deep multi-agent research investigation has finished synthesizing.
+            </p>
+
+            <div style="margin: 20px 0; padding: 14px 18px; background-color: #1a1d2e; border-left: 3px solid #7c6af0; border-radius: 6px;">
+              <div style="font-size: 11px; font-weight: 700; color: #a78bfa; text-transform: uppercase; margin-bottom: 4px;">Research Inquiry</div>
+              <div style="font-size: 14px; font-weight: 700; color: #ffffff; line-height: 1.4;">{question}</div>
+            </div>
+
+            <div style="margin: 20px 0; padding: 14px 18px; background-color: #13151f; border-radius: 8px; border: 1px solid #282b3d;">
+              <div style="font-size: 11.5px; font-weight: 700; color: #06b6d4; text-transform: uppercase; margin-bottom: 6px;">Executive Briefing</div>
+              <p style="margin: 0; font-size: 13.5px; color: #cbd5e1; line-height: 1.55;">
+                {summary[:400]}...
+              </p>
+              <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
+                ✓ {sources_count} empirical sources scrutinized & verified
+              </div>
+            </div>
+
+            <div style="margin: 26px 0 16px; text-align: center;">
+              <a href="{report_url}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #7C6AF0, #06B6D4); color: #ffffff; text-decoration: none; font-size: 14.5px; font-weight: 700; padding: 13px 32px; border-radius: 8px; box-shadow: 0 4px 14px rgba(124, 106, 240, 0.4);">
+                Read Full Synthesis Report &rarr;
+              </a>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 20px 32px; background-color: #11131c; border-top: 1px solid #282b3d; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #64748b;">
+              AI Research Assistant &nbsp;·&nbsp; <a href="https://research.mychatbot.codes" style="color: #7c6af0; text-decoration: none;">research.mychatbot.codes</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """
+
+
+async def send_research_completion_email(
+    to_email: str,
+    user_name: str,
+    question: str,
+    summary: str,
+    sources_count: int,
+    report_url: str = "https://research.mychatbot.codes",
+) -> bool:
+    """
+    Sends an executive research briefing email when an investigation completes.
+    """
+    subject = f"Research Completed: {question[:60]}..."
+    html_content = _build_research_completed_html(user_name, question, summary, sources_count, report_url)
+    text_content = (
+        f"Hi {user_name},\n\nYour research investigation has completed.\n\n"
+        f"Inquiry: {question}\n\n"
+        f"Executive Summary:\n{summary}\n\n"
+        f"Read full report: {report_url}"
+    )
+
+    try:
+        await asyncio.to_thread(_send_smtp_sync, to_email, subject, html_content, text_content)
+        logger.info("research_completion_email_sent", email=to_email)
+        return True
+    except Exception as exc:
+        logger.warning("research_completion_email_failed", email=to_email, error=str(exc))
+        return False
+
