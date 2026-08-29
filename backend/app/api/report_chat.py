@@ -36,24 +36,24 @@ router = APIRouter(prefix="/research", tags=["report-chat"])
 # ── Pydantic Request Models ─────────────────────────────────────────
 
 class ChatMessageRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=2000)
-    chat_history: list[dict[str, str]] = Field(default_factory=list)
+    message: str = Field(..., min_length=1, max_length=50000)
+    chat_history: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ExpandSectionRequest(BaseModel):
-    section_title: str
-    section_content: str
-    action: Literal["elaborate", "counter_arguments", "table"] = "elaborate"
+    section_title: str = Field(default="")
+    section_content: str = Field(default="")
+    action: str = Field(default="elaborate")
 
 
 class ExplainSelectionRequest(BaseModel):
-    selected_text: str
-    action: Literal["eli5", "evidence", "metrics"] = "eli5"
+    selected_text: str = Field(default="")
+    action: str = Field(default="eli5")
 
 
 class AppendSectionRequest(BaseModel):
-    section_title: str
-    addition_content: str
+    section_title: str = Field(default="")
+    addition_content: str = Field(default="")
 
 
 # ── Chat Endpoints ──────────────────────────────────────────────────

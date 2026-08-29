@@ -86,7 +86,11 @@ RULES:
     # Build conversation messages
     messages = [{"role": "system", "content": system_prompt}]
     for msg in chat_history[-6:]:  # include last 3 turns
-        messages.append({"role": msg["role"], "content": msg["content"]})
+        if isinstance(msg, dict):
+            role = msg.get("role")
+            content = msg.get("content")
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": str(content)})
     messages.append({"role": "user", "content": message})
 
     # Save user message to database
