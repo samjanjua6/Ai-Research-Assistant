@@ -29,6 +29,7 @@ router = APIRouter(prefix="/public/discover", tags=["discover"])
 
 class UpvoteRequest(BaseModel):
     count: int = Field(1, ge=1, le=10)
+    action: str = Field("like", description="'like' or 'unlike'")
 
 
 class ForkRequest(BaseModel):
@@ -74,9 +75,9 @@ async def upvote_report_endpoint(
     req: UpvoteRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Records claps / upvotes for a research report."""
+    """Records like or unlike for a research report."""
     try:
-        return await record_report_upvote(run_id=run_id, count=req.count, db=db)
+        return await record_report_upvote(run_id=run_id, count=req.count, action=req.action, db=db)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

@@ -163,16 +163,26 @@ async def get_public_discover_feed(
     }
 
 
-async def record_report_upvote(run_id: uuid.UUID, count: int, db: AsyncSession) -> dict[str, Any]:
-    """Increments the clap / upvote counter for a research report."""
+async def record_report_upvote(
+    run_id: uuid.UUID,
+    count: int = 1,
+    action: str = "like",
+    db: AsyncSession = None,
+) -> dict[str, Any]:
+    """Toggles like / unlike or adjusts upvote counter for a research report."""
     query = select(ResearchRun).where(ResearchRun.id == run_id)
     res = await db.execute(query)
     run = res.scalar_one_or_none()
     if not run:
         raise ValueError("Research run not found.")
 
-    add_count = max(1, min(count, 10))  # allow up to 10 claps per payload
-    run.upvotes_count = (run.upvotes_count or 0) + add_count
+    if action == "unlike":
+        delta = -abs(count)
+    else:
+        delta = max(1, min(count, 10))
+
+    new_count = max(0, (run.upvotes_count or 0) + delta)
+    run.upvotes_count = new_count
     await db.commit()
     await db.refresh(run)
 
@@ -180,7 +190,8 @@ async def record_report_upvote(run_id: uuid.UUID, count: int, db: AsyncSession) 
         "status": "success",
         "run_id": str(run.id),
         "upvotes_count": run.upvotes_count,
-        "added": add_count,
+        "action": action,
+        "delta": delta,
     }
 
 

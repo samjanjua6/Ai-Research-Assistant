@@ -790,11 +790,11 @@ export async function fetchDiscoverStats() {
   return res.json()
 }
 
-export async function upvoteReport(runId, count = 1) {
+export async function upvoteReport(runId, count = 1, action = 'like') {
   const res = await fetch(`${BASE}/public/discover/${runId}/upvote`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ count }),
+    body: JSON.stringify({ count, action }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

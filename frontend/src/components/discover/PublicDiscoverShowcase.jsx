@@ -48,7 +48,14 @@ export default function PublicDiscoverShowcase({ onNavigateHome, onLaunchForkInq
   const [searchQuery, setSearchQuery] = useState('')
   const [engineFilter, setEngineFilter] = useState('all')
   const [forkTargetReport, setForkTargetReport] = useState(null)
-  const [clappedReports, setClappedReports] = useState({})
+  const [likedReportIds, setLikedReportIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('discover_liked_report_ids')
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
 
   const loadFeed = useCallback(async () => {
     setLoading(true)
@@ -91,24 +98,45 @@ export default function PublicDiscoverShowcase({ onNavigateHome, onLaunchForkInq
     return () => clearTimeout(timer)
   }, [loadFeed])
 
-  const handleClap = async (e, r) => {
+  const handleToggleLike = async (e, r) => {
     e.stopPropagation()
     const reportId = r.id
-    const prevCount = r.upvotes_count || 0
+    const isCurrentlyLiked = Boolean(likedReportIds[reportId])
+    const nextIsLiked = !isCurrentlyLiked
+    const delta = nextIsLiked ? 1 : -1
 
     // Optimistic UI update
     setReports((prev) =>
       prev.map((item) =>
-        item.id === reportId ? { ...item, upvotes_count: prevCount + 1 } : item
+        item.id === reportId
+          ? { ...item, upvotes_count: Math.max(0, (item.upvotes_count || 0) + delta) }
+          : item
       )
     )
-    setClappedReports((prev) => ({ ...prev, [reportId]: (prev[reportId] || 0) + 1 }))
-    toast.success('Clapped for this study!')
+
+    setLikedReportIds((prev) => {
+      const next = { ...prev }
+      if (nextIsLiked) {
+        next[reportId] = true
+      } else {
+        delete next[reportId]
+      }
+      try {
+        localStorage.setItem('discover_liked_report_ids', JSON.stringify(next))
+      } catch (err) {}
+      return next
+    })
+
+    if (nextIsLiked) {
+      toast.success('Liked research inquiry!')
+    } else {
+      toast.info('Removed like.')
+    }
 
     try {
-      await upvoteReport(reportId, 1)
+      await upvoteReport(reportId, 1, nextIsLiked ? 'like' : 'unlike')
     } catch (err) {
-      console.error('Failed to register clap:', err)
+      console.error('Failed to update like status:', err)
     }
   }
 
@@ -393,7 +421,7 @@ export default function PublicDiscoverShowcase({ onNavigateHome, onLaunchForkInq
           }}
         >
           {reports.map((r) => {
-            const hasClapped = Boolean(clappedReports[r.id])
+            const isLiked = Boolean(likedReportIds[r.id])
             return (
               <div
                 key={r.id}
@@ -563,16 +591,16 @@ export default function PublicDiscoverShowcase({ onNavigateHome, onLaunchForkInq
 
                   {/* Action Buttons */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                    {/* Clap Button */}
+                    {/* Like / Unlike Toggle Button */}
                     <button
                       type="button"
-                      onClick={(e) => handleClap(e, r)}
+                      onClick={(e) => handleToggleLike(e, r)}
                       style={{
                         padding: '5px 10px',
                         borderRadius: 6,
-                        border: hasClapped ? '1px solid #f43f5e' : '1px solid var(--border)',
-                        backgroundColor: hasClapped ? 'rgba(244, 63, 94, 0.12)' : 'transparent',
-                        color: hasClapped ? '#f43f5e' : 'var(--text-dim)',
+                        border: isLiked ? '1px solid #f43f5e' : '1px solid var(--border)',
+                        backgroundColor: isLiked ? 'rgba(244, 63, 94, 0.12)' : 'transparent',
+                        color: isLiked ? '#f43f5e' : 'var(--text-dim)',
                         fontSize: '12px',
                         fontWeight: 600,
                         cursor: 'pointer',
@@ -581,9 +609,9 @@ export default function PublicDiscoverShowcase({ onNavigateHome, onLaunchForkInq
                         gap: 5,
                         transition: 'all 0.15s ease',
                       }}
-                      title="Clap for this research run"
+                      title={isLiked ? 'Unlike this research run' : 'Like this research run'}
                     >
-                      <Heart size={13} fill={hasClapped ? '#f43f5e' : 'none'} strokeWidth={2} />
+                      <Heart size={13} fill={isLiked ? '#f43f5e' : 'none'} strokeWidth={2} />
                       <span>{r.upvotes_count || 0}</span>
                     </button>
 
