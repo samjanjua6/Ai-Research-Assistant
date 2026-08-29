@@ -14,6 +14,7 @@ import Placeholder      from './components/Placeholder'
 import PublicReportView from './components/PublicReportView'
 import LiveDraftPreview from './components/LiveDraftPreview'
 import { AdminDashboard } from './components/admin/AdminDashboard'
+import { UsageAnalyticsDashboard } from './components/analytics/UsageAnalyticsDashboard'
 import { ErrorStateIllustration, EmptyState } from './components/illustrations/EmptyStateIllustrations'
 import { LogoMark } from './components/brand/Logo'
 
@@ -29,6 +30,15 @@ function getIsAdminPath() {
     window.location.pathname === '/admin' ||
     window.location.pathname.startsWith('/admin/') ||
     window.location.search.includes('view=admin')
+  )
+}
+
+function getIsAnalyticsPath() {
+  if (typeof window === 'undefined') return false
+  return (
+    window.location.pathname === '/analytics' ||
+    window.location.pathname.startsWith('/analytics/') ||
+    window.location.search.includes('view=analytics')
   )
 }
 
@@ -71,6 +81,7 @@ export default function App() {
 
   const [shareToken,          setShareToken]          = useState(getShareTokenFromPath)
   const [isAdminView,         setIsAdminView]         = useState(getIsAdminPath)
+  const [isAnalyticsView,     setIsAnalyticsView]     = useState(getIsAnalyticsPath)
   const [magicReset,          setMagicReset]          = useState(getMagicResetParams)
   const [isSidebarCollapsed,  setIsSidebarCollapsed]  = useState(getInitialSidebarState)
   const [activeRunId,         setActiveRunId]         = useState(null)
@@ -241,6 +252,50 @@ export default function App() {
     )
   }
 
+  // If visiting personal analytics dashboard (/analytics)
+  if (isAnalyticsView) {
+    return (
+      <div className="app-layout" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Header
+          isSidebarCollapsed={true}
+          onToggleSidebar={() => {}}
+          onNewResearch={() => {
+            setIsAnalyticsView(false)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+            handleNewResearch()
+          }}
+          onOpenAdmin={() => {
+            setIsAnalyticsView(false)
+            setIsAdminView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/admin')
+          }}
+          onOpenAnalytics={() => {}}
+          engine={currentEngine}
+        />
+        <main className="main-content" style={{ padding: '24px 20px', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+          <UsageAnalyticsDashboard
+            onBackToWorkspace={() => {
+              setIsAnalyticsView(false)
+              if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+            }}
+            onSelectTopic={(topicText) => {
+              setIsAnalyticsView(false)
+              if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+              setFormQuestion(topicText)
+              setTimeout(() => {
+                const input = document.querySelector('.question-input')
+                if (input) {
+                  input.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  input.focus()
+                }
+              }, 100)
+            }}
+          />
+        </main>
+      </div>
+    )
+  }
+
   const isLoading  = phase === 'streaming'
   const hasRun     = phase !== 'idle' || steps.length > 0 || report !== null
   const showReport = phase === 'done' && report
@@ -266,7 +321,13 @@ export default function App() {
         engine={currentEngine}
         onOpenAdmin={() => {
           setIsAdminView(true)
+          setIsAnalyticsView(false)
           window.history.pushState({}, '', '/admin')
+        }}
+        onOpenAnalytics={() => {
+          setIsAnalyticsView(true)
+          setIsAdminView(false)
+          window.history.pushState({}, '', '/analytics')
         }}
       />
 

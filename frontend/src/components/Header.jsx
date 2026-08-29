@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck, Users, Zap, Sparkles } from 'lucide-react'
+import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck, Users, Zap, Sparkles, BarChart2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { DeleteAccountModal } from './DeleteAccountModal'
@@ -8,7 +8,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { useToast } from '../context/ToastContext'
 import { Logo } from './brand/Logo'
 
-export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch, onOpenAdmin, engine }) {
+export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch, onOpenAdmin, onOpenAnalytics, engine }) {
   const { user, logout } = useAuth()
   const { info: toastInfo } = useToast()
   const [showAuth, setShowAuth] = useState(false)
@@ -213,6 +213,33 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
                       <span>Admin Studio</span>
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    className="dropdown-item"
+                    onClick={() => {
+                      setShowUserMenu(false)
+                      onOpenAnalytics?.()
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      fontSize: '12.5px',
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      cursor: 'pointer',
+                      marginBottom: 2,
+                    }}
+                  >
+                    <BarChart2 size={13} strokeWidth={2} style={{ color: 'var(--violet)' }} />
+                    <span>Usage & Analytics</span>
+                  </button>
 
                   <button
                     type="button"

@@ -448,4 +448,18 @@ export async function fetchWildcardPrompt() {
   return res.json()
 }
 
+// ── Personal Usage & Research Analytics ───────────────────────────
+
+export async function fetchUserAnalytics() {
+  const res = await fetch(`${BASE}/research/analytics/me`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+
 
