@@ -3,7 +3,7 @@ import { Sparkles, HelpCircle, ShieldCheck, BarChart2, MessageSquare, X, Check }
 import { explainTextSelection } from '../../api/client'
 import { useToast } from '../../context/ToastContext'
 
-export function TextSelectionPopover({ runId, onOpenChatWithPrompt }) {
+export function TextSelectionPopover({ runId, onOpenChatWithPrompt, containerSelector = '.report-body, .tldr' }) {
   const { info: toastInfo, error: toastError } = useToast()
   const [selectedText, setSelectedText] = useState('')
   const [position, setPosition] = useState(null)
@@ -15,7 +15,26 @@ export function TextSelectionPopover({ runId, onOpenChatWithPrompt }) {
     const handleMouseUp = () => {
       const selection = window.getSelection()
       if (!selection || selection.isCollapsed) {
-        // If clicking inside the popover itself, keep it open
+        return
+      }
+
+      const anchorNode = selection.anchorNode
+      const focusNode = selection.focusNode
+
+      const isInsideReport = (node) => {
+        if (!node) return false
+        const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
+        return el ? Boolean(el.closest(containerSelector)) : false
+      }
+
+      // Strictly ensure the highlighted selection is inside the report container
+      if (!isInsideReport(anchorNode) || !isInsideReport(focusNode)) {
+        return
+      }
+
+      // Exclude interactive elements or code blocks
+      const anchorEl = anchorNode.nodeType === Node.ELEMENT_NODE ? anchorNode : anchorNode.parentElement
+      if (anchorEl?.closest('button, input, textarea, select, .user-menu-wrapper, .sidebar, .topbar, .report-actions, .citation-badge, pre, code')) {
         return
       }
 
@@ -48,7 +67,7 @@ export function TextSelectionPopover({ runId, onOpenChatWithPrompt }) {
       document.removeEventListener('mouseup', handleMouseUp)
       document.removeEventListener('mousedown', handleMouseDown)
     }
-  }, [])
+  }, [containerSelector])
 
   const handleAction = async (action) => {
     if (!runId || !selectedText) return
