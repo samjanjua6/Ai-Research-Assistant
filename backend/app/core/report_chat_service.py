@@ -107,8 +107,13 @@ RULES:
     full_assistant_response = []
 
     try:
+        model_name = settings.groq_model
+        if not model_name.startswith("groq/"):
+            model_name = f"groq/{model_name}"
+
         response = await acompletion(
-            model=settings.groq_model,
+            model=model_name,
+            api_key=settings.groq_api_key,
             messages=messages,
             temperature=0.25,
             max_tokens=2500,
@@ -190,8 +195,13 @@ FULL REPORT & EVIDENCE:
 Return ONLY the high-density Markdown addition for this section with citations ([1], [2]). Do not repeat the section title heading.
 """
 
+    model_name = settings.groq_model
+    if not model_name.startswith("groq/"):
+        model_name = f"groq/{model_name}"
+
     response = await acompletion(
-        model=settings.groq_model,
+        model=model_name,
+        api_key=settings.groq_api_key,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
         max_tokens=2000,
@@ -233,8 +243,13 @@ INSTRUCTION: {instruction}
 Return a concise, direct 2-3 paragraph response in GitHub Markdown.
 """
 
+    model_name = settings.groq_model
+    if not model_name.startswith("groq/"):
+        model_name = f"groq/{model_name}"
+
     response = await acompletion(
-        model=settings.groq_model,
+        model=model_name,
+        api_key=settings.groq_api_key,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
         max_tokens=1000,

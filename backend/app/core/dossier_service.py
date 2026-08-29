@@ -223,8 +223,13 @@ Maintain an authoritative, objective scientific tone. Do not mention that you ar
 
     logger.info("synthesizing_master_dossier", user_id=str(user_id), run_count=len(runs))
 
+    model_name = settings.groq_model
+    if not model_name.startswith("groq/"):
+        model_name = f"groq/{model_name}"
+
     response = await acompletion(
-        model=settings.groq_model,
+        model=model_name,
+        api_key=settings.groq_api_key,
         messages=[
             {
                 "role": "system",
