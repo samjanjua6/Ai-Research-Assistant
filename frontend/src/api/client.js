@@ -461,5 +461,175 @@ export async function fetchUserAnalytics() {
   return res.json()
 }
 
+// ── Research Library & Collections Hub ─────────────────────────────
+
+export async function fetchLibraryRuns({
+  search = '',
+  collection_id = '',
+  engine = '',
+  lens = '',
+  is_bookmarked = null,
+  date_range = '',
+  limit = 50,
+  offset = 0,
+} = {}) {
+  const params = new URLSearchParams({ limit, offset })
+  if (search) params.append('search', search)
+  if (collection_id && collection_id !== 'all') params.append('collection_id', collection_id)
+  if (engine && engine !== 'all') params.append('engine', engine)
+  if (lens && lens !== 'all') params.append('lens', lens)
+  if (is_bookmarked !== null && is_bookmarked !== undefined) params.append('is_bookmarked', String(is_bookmarked))
+  if (date_range && date_range !== 'all') params.append('date_range', date_range)
+
+  const res = await fetch(`${BASE}/research/library?${params.toString()}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function fetchCollections() {
+  const res = await fetch(`${BASE}/research/library/collections`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function createCollection({ name, description = '', color = '#7c6af0', icon = 'Folder', is_smart = false, smart_rules = null }) {
+  const res = await fetch(`${BASE}/research/library/collections`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ name, description, color, icon, is_smart, smart_rules }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function updateCollection(collectionId, data) {
+  const res = await fetch(`${BASE}/research/library/collections/${collectionId}`, {
+    method: 'PATCH',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function deleteCollection(collectionId) {
+  const res = await fetch(`${BASE}/research/library/collections/${collectionId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function modifyCollectionRuns(collectionId, runIds, action = 'add') {
+  const res = await fetch(`${BASE}/research/library/collections/${collectionId}/runs`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ run_ids: runIds, action }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function toggleRunBookmark(runId) {
+  const res = await fetch(`${BASE}/research/library/runs/${runId}/bookmark`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function updateRunTags(runId, tags) {
+  const res = await fetch(`${BASE}/research/library/runs/${runId}/tags`, {
+    method: 'PATCH',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ tags }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function updateRunNotes(runId, notes) {
+  const res = await fetch(`${BASE}/research/library/runs/${runId}/notes`, {
+    method: 'PATCH',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ notes }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function generateMasterDossier({ run_ids, title = '', focus = '' }) {
+  const res = await fetch(`${BASE}/research/library/dossier`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ run_ids, title: title || null, focus: focus || null }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function exportBibTeX(runIds) {
+  const res = await fetch(`${BASE}/research/library/export/bibtex`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ run_ids: runIds }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.text()
+}
+
+export async function exportCSV(runIds) {
+  const res = await fetch(`${BASE}/research/library/export/csv`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ run_ids: runIds }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.text()
+}
+
+
 
 

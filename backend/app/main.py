@@ -17,6 +17,7 @@ from app.api.auth import router as auth_router
 from app.api.admin import router as admin_router
 from app.api.trending import router as trending_router
 from app.api.analytics import router as analytics_router
+from app.api.library import router as library_router
 from app.core.config import get_settings
 from app.core.logging import setup_logging, get_logger
 from app.db.crud import get_run_by_share_token
@@ -89,6 +90,22 @@ async def lifespan(app: FastAPI):
                 "CREATE INDEX IF NOT EXISTS ix_research_runs_share_token ON research_runs(share_token);"
             )
         )
+        # Ensure is_bookmarked, tags, user_notes exist for Library & Collections
+        await conn.execute(
+            text(
+                "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS is_bookmarked BOOLEAN NOT NULL DEFAULT FALSE;"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS user_notes TEXT;"
+            )
+        )
 
     logger.info("database_tables_ready")
     yield
@@ -117,6 +134,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(trending_router)
 app.include_router(analytics_router)
+app.include_router(library_router)
 app.include_router(research_router)
 app.include_router(public_router)
 
@@ -195,6 +213,16 @@ async def serve_admin_spa(full_path: str = ""):
 @app.get("/analytics/{full_path:path}", include_in_schema=False)
 async def serve_analytics_spa(full_path: str = ""):
     """Serve SPA index.html for direct navigation or hard-refresh on /analytics routes."""
+    index_file = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse("<h1>Frontend build not found</h1>", status_code=404)
+
+
+@app.get("/library", include_in_schema=False)
+@app.get("/library/{full_path:path}", include_in_schema=False)
+async def serve_library_spa(full_path: str = ""):
+    """Serve SPA index.html for direct navigation or hard-refresh on /library routes."""
     index_file = os.path.join(frontend_dist, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck, Users, Zap, Sparkles, BarChart2 } from 'lucide-react'
+import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck, Users, Zap, Sparkles, BarChart2, Folder, BookOpen } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { DeleteAccountModal } from './DeleteAccountModal'
@@ -8,7 +8,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { useToast } from '../context/ToastContext'
 import { Logo } from './brand/Logo'
 
-export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch, onOpenAdmin, onOpenAnalytics, engine }) {
+export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch, onOpenAdmin, onOpenAnalytics, onOpenLibrary, engine }) {
   const { user, logout } = useAuth()
   const { info: toastInfo } = useToast()
   const [showAuth, setShowAuth] = useState(false)
@@ -213,6 +213,33 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
                       <span>Admin Studio</span>
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    className="dropdown-item"
+                    onClick={() => {
+                      setShowUserMenu(false)
+                      onOpenLibrary?.()
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      fontSize: '12.5px',
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      cursor: 'pointer',
+                      marginBottom: 2,
+                    }}
+                  >
+                    <Folder size={13} strokeWidth={2} style={{ color: '#10b981' }} />
+                    <span>Research Library</span>
+                  </button>
 
                   <button
                     type="button"

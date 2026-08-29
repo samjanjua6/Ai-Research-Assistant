@@ -15,6 +15,7 @@ import PublicReportView from './components/PublicReportView'
 import LiveDraftPreview from './components/LiveDraftPreview'
 import { AdminDashboard } from './components/admin/AdminDashboard'
 import { UsageAnalyticsDashboard } from './components/analytics/UsageAnalyticsDashboard'
+import { ResearchLibraryHub } from './components/library/ResearchLibraryHub'
 import { ErrorStateIllustration, EmptyState } from './components/illustrations/EmptyStateIllustrations'
 import { LogoMark } from './components/brand/Logo'
 
@@ -39,6 +40,15 @@ function getIsAnalyticsPath() {
     window.location.pathname === '/analytics' ||
     window.location.pathname.startsWith('/analytics/') ||
     window.location.search.includes('view=analytics')
+  )
+}
+
+function getIsLibraryPath() {
+  if (typeof window === 'undefined') return false
+  return (
+    window.location.pathname === '/library' ||
+    window.location.pathname.startsWith('/library/') ||
+    window.location.search.includes('view=library')
   )
 }
 
@@ -82,6 +92,7 @@ export default function App() {
   const [shareToken,          setShareToken]          = useState(getShareTokenFromPath)
   const [isAdminView,         setIsAdminView]         = useState(getIsAdminPath)
   const [isAnalyticsView,     setIsAnalyticsView]     = useState(getIsAnalyticsPath)
+  const [isLibraryView,       setIsLibraryView]       = useState(getIsLibraryPath)
   const [magicReset,          setMagicReset]          = useState(getMagicResetParams)
   const [isSidebarCollapsed,  setIsSidebarCollapsed]  = useState(getInitialSidebarState)
   const [activeRunId,         setActiveRunId]         = useState(null)
@@ -270,6 +281,11 @@ export default function App() {
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/admin')
           }}
           onOpenAnalytics={() => {}}
+          onOpenLibrary={() => {
+            setIsAnalyticsView(false)
+            setIsLibraryView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/library')
+          }}
           engine={currentEngine}
         />
         <main className="main-content" style={{ padding: '24px 20px', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
@@ -289,6 +305,50 @@ export default function App() {
                   input.focus()
                 }
               }, 100)
+            }}
+          />
+        </main>
+      </div>
+    )
+  }
+
+  // If visiting research library & collections hub (/library)
+  if (isLibraryView) {
+    return (
+      <div className="app-layout" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Header
+          isSidebarCollapsed={true}
+          onToggleSidebar={() => {}}
+          onNewResearch={() => {
+            setIsLibraryView(false)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+            handleNewResearch()
+          }}
+          onOpenAdmin={() => {
+            setIsLibraryView(false)
+            setIsAdminView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/admin')
+          }}
+          onOpenAnalytics={() => {
+            setIsLibraryView(false)
+            setIsAnalyticsView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/analytics')
+          }}
+          onOpenLibrary={() => {}}
+          engine={currentEngine}
+        />
+        <main className="main-content" style={{ padding: '24px 20px', maxWidth: 1300, margin: '0 auto', width: '100%' }}>
+          <ResearchLibraryHub
+            onBackToWorkspace={() => {
+              setIsLibraryView(false)
+              if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+            }}
+            onOpenRun={(runId, question) => {
+              setIsLibraryView(false)
+              if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+              setActiveRunId(runId)
+              setActiveQuestion(question)
+              viewRun(runId)
             }}
           />
         </main>
@@ -322,12 +382,20 @@ export default function App() {
         onOpenAdmin={() => {
           setIsAdminView(true)
           setIsAnalyticsView(false)
+          setIsLibraryView(false)
           window.history.pushState({}, '', '/admin')
         }}
         onOpenAnalytics={() => {
           setIsAnalyticsView(true)
           setIsAdminView(false)
+          setIsLibraryView(false)
           window.history.pushState({}, '', '/analytics')
+        }}
+        onOpenLibrary={() => {
+          setIsLibraryView(true)
+          setIsAdminView(false)
+          setIsAnalyticsView(false)
+          window.history.pushState({}, '', '/library')
         }}
       />
 

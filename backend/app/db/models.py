@@ -88,6 +88,9 @@ class ResearchRun(Base):
     )
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     views_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_bookmarked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    tags: Mapped[list | None] = mapped_column(JSONB, default=list, nullable=True)
+    user_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now
     )
@@ -97,6 +100,9 @@ class ResearchRun(Base):
 
     user: Mapped["User | None"] = relationship(back_populates="runs")
     step_logs: Mapped[list["StepLog"]] = relationship(
+        back_populates="run", cascade="all, delete-orphan"
+    )
+    collection_items: Mapped[list["CollectionItem"]] = relationship(
         back_populates="run", cascade="all, delete-orphan"
     )
 
@@ -120,6 +126,67 @@ class StepLog(Base):
     )
 
     run: Mapped["ResearchRun"] = relationship(back_populates="step_logs")
+
+
+# ── Collection ────────────────────────────────────────────────────
+
+class Collection(Base):
+    __tablename__ = "collections"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    color: Mapped[str | None] = mapped_column(String(30), default="#7c6af0", nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(30), default="Folder", nullable=True)
+    is_smart: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    smart_rules: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+
+    user: Mapped["User"] = relationship()
+    items: Mapped[list["CollectionItem"]] = relationship(
+        back_populates="collection", cascade="all, delete-orphan"
+    )
+
+
+# ── CollectionItem ────────────────────────────────────────────────
+
+class CollectionItem(Base):
+    __tablename__ = "collection_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    collection_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("collections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("research_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now
+    )
+
+    collection: Mapped["Collection"] = relationship(back_populates="items")
+    run: Mapped["ResearchRun"] = relationship(back_populates="collection_items")
 
 
 # ── EmailVerification ──────────────────────────────────────────────
