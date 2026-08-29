@@ -18,6 +18,7 @@ from app.api.admin import router as admin_router
 from app.api.trending import router as trending_router
 from app.api.analytics import router as analytics_router
 from app.api.library import router as library_router
+from app.api.report_chat import router as report_chat_router
 from app.core.config import get_settings
 from app.core.logging import setup_logging, get_logger
 from app.db.crud import get_run_by_share_token
@@ -135,6 +136,7 @@ app.include_router(admin_router)
 app.include_router(trending_router)
 app.include_router(analytics_router)
 app.include_router(library_router)
+app.include_router(report_chat_router)
 app.include_router(research_router)
 app.include_router(public_router)
 

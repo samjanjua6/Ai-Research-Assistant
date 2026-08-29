@@ -204,3 +204,35 @@ class EmailVerification(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
+
+# ── ReportChatMessage ──────────────────────────────────────────────
+
+class ReportChatMessage(Base):
+    __tablename__ = "report_chat_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("research_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # "user" or "assistant"
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    sources_referenced: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now
+    )
+
+    run: Mapped["ResearchRun"] = relationship()
+    user: Mapped["User | None"] = relationship()
+
+

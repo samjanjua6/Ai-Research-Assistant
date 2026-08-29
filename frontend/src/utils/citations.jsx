@@ -228,7 +228,7 @@ export function UrlCitationBadge({ label, url }) {
  * CitationBadge component — rendered for every [cite:N:url] link.
  * Uses inline anchor tag for clean clipboard text selection without newline breaking.
  */
-export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
+export function CitationBadge({ num, url, sourcePrefix = 'source', onOpenCitation }) {
   const [showTooltip, setShowTooltip] = useState(false)
   const [copied, setCopied] = useState(false)
   const timeoutRef = useRef(null)
@@ -252,6 +252,10 @@ export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
 
   const handleClick = (e) => {
     e.preventDefault()
+    if (onOpenCitation) {
+      onOpenCitation(num)
+      return
+    }
     const targetId = `${sourcePrefix}-${num}`
     const targetEl = document.getElementById(targetId)
     if (targetEl) {
@@ -320,44 +324,35 @@ export function CitationBadge({ num, url, sourcePrefix = 'source' }) {
             <div className="citation-url" title={url}>
               {url}
             </div>
-          ) : (
-            <div className="citation-url citation-url-empty">
-              Footnote reference [{num}]
-            </div>
-          )}
+          ) : null}
 
-          {url && (
-            <div className="citation-tooltip-actions">
+          <div className="citation-tooltip-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+            {onOpenCitation && (
+              <button
+                type="button"
+                className="citation-action-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenCitation(num)
+                }}
+                style={{ color: 'var(--violet)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <ShieldCheck size={11} /> Verify Excerpt
+              </button>
+            )}
+
+            {url && (
               <button
                 type="button"
                 className="citation-action-btn"
                 onClick={handleCopyUrl}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                title="Copy source URL"
               >
-                {copied ? (
-                  <>
-                    <Check size={11} strokeWidth={2.2} className="icon-success-pop" /> Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy size={11} strokeWidth={1.75} /> Copy URL
-                  </>
-                )}
+                {copied ? <Check size={11} className="icon-success-pop" /> : <Copy size={11} />}
+                <span>{copied ? 'Copied' : 'Copy link'}</span>
               </button>
-
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="citation-action-btn citation-open-btn"
-                onClick={(e) => e.stopPropagation()}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-              >
-                <span>Open link</span>
-                <ExternalLink size={11} strokeWidth={2} />
-              </a>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </span>

@@ -2,6 +2,9 @@ import { useState, useCallback, useMemo } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ShareModal } from './ShareModal'
+import { ChatWithReportDrawer } from './chat/ChatWithReportDrawer'
+import { CitationVerifierDrawer } from './chat/CitationVerifierDrawer'
+import { TextSelectionPopover } from './chat/TextSelectionPopover'
 import { toast } from '../context/ToastContext'
 import {
   linkifyCitations,
@@ -32,6 +35,8 @@ import {
   Globe,
   Users,
   Zap,
+  MessageSquare,
+  Scale,
 } from 'lucide-react'
 import {
   SectionHeading,
@@ -245,6 +250,32 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
   const [expandedExcerptIdx, setExpandedExcerptIdx] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [showShare, setShowShare] = useState(false)
+  const [showChatDrawer, setShowChatDrawer] = useState(false)
+  const [chatInitialPrompt, setChatInitialPrompt] = useState('')
+  const [activeCitationIndex, setActiveCitationIndex] = useState(null)
+
+  const targetRunId = runId || report?.id
+
+  const handleOpenCitation = useCallback((num) => {
+    setActiveCitationIndex(num)
+  }, [])
+
+  const handleOpenChatWithPrompt = useCallback((prompt) => {
+    setChatInitialPrompt(prompt)
+    setShowChatDrawer(true)
+  }, [])
+
+  const handleExpandSection = useCallback((sectionTitle, sectionContent, action) => {
+    const actionDesc = action === 'counter_arguments'
+      ? 'generate critical counter-arguments and skepticism for'
+      : action === 'table'
+      ? 'extract a structured comparison table for'
+      : 'elaborate with deeper empirical and architectural details on'
+
+    const prompt = `Please ${actionDesc} this section:\n\n### ${sectionTitle}\n"${sectionContent.slice(0, 1500)}"`
+    setChatInitialPrompt(prompt)
+    setShowChatDrawer(true)
+  }, [])
 
   const handleCopyFollowUp = useCallback((qText, idx) => {
     if (!qText) return
@@ -281,7 +312,14 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
           const parts = childText.split(':')
           const num = parseInt(parts[1], 10)
           const url = decodeURIComponent(parts.slice(2).join(':') || '')
-          return <CitationBadge num={num} url={url} sourcePrefix="source" />
+          return (
+            <CitationBadge
+              num={num}
+              url={url}
+              sourcePrefix="source"
+              onOpenCitation={handleOpenCitation}
+            />
+          )
         }
         if (childText.startsWith('confidence:')) {
           const parts = childText.split(':')
@@ -304,12 +342,22 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
         )
       },
       h2: ({ children, ...props }) => (
-        <SectionHeading level={2} rawMarkdown={normalizedReport} {...props}>
+        <SectionHeading
+          level={2}
+          rawMarkdown={normalizedReport}
+          onExpandSection={handleExpandSection}
+          {...props}
+        >
           {children}
         </SectionHeading>
       ),
       h3: ({ children, ...props }) => (
-        <SectionHeading level={3} rawMarkdown={normalizedReport} {...props}>
+        <SectionHeading
+          level={3}
+          rawMarkdown={normalizedReport}
+          onExpandSection={handleExpandSection}
+          {...props}
+        >
           {children}
         </SectionHeading>
       ),
@@ -320,7 +368,7 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
         <TableBlock {...props}>{children}</TableBlock>
       ),
     }),
-    [normalizedReport]
+    [normalizedReport, handleOpenCitation, handleExpandSection]
   )
 
   // ── Copy Full Report ──────────────────────────────────────────
@@ -437,8 +485,6 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
     }
   }, [report, normalizedReport, question])
 
-  const targetRunId = runId || report?.id
-
   return (
     <div className="card animate-in">
       <div className="report-header-row">
@@ -481,6 +527,26 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
           )}
         </div>
         <div className="report-actions">
+          {/* Chat with Report button */}
+          {targetRunId && (
+            <button
+              className="copy-btn"
+              onClick={() => setShowChatDrawer(true)}
+              title="Chat directly with this report's gathered evidence"
+              style={{
+                color: '#ffffff',
+                backgroundColor: 'var(--violet)',
+                borderColor: 'var(--violet)',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <MessageSquare size={13} strokeWidth={2} /> Chat with Report
+            </button>
+          )}
+
           {/* Share button */}
           {targetRunId && (
             <button
@@ -1066,6 +1132,38 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
           runId={targetRunId}
           question={question}
           onClose={() => setShowShare(false)}
+        />
+      )}
+
+      {/* ── Text Selection AI Popover ── */}
+      {targetRunId && (
+        <TextSelectionPopover
+          runId={targetRunId}
+          onOpenChatWithPrompt={handleOpenChatWithPrompt}
+        />
+      )}
+
+      {/* ── Chat with Report Drawer ── */}
+      {showChatDrawer && targetRunId && (
+        <ChatWithReportDrawer
+          runId={targetRunId}
+          reportQuestion={question || report?.question}
+          initialPrompt={chatInitialPrompt}
+          onClose={() => {
+            setShowChatDrawer(false)
+            setChatInitialPrompt('')
+          }}
+          onOpenCitation={handleOpenCitation}
+        />
+      )}
+
+      {/* ── Citation Verifier Drawer ── */}
+      {activeCitationIndex !== null && targetRunId && (
+        <CitationVerifierDrawer
+          runId={targetRunId}
+          citationIndex={activeCitationIndex}
+          onClose={() => setActiveCitationIndex(null)}
+          onAskInChat={handleOpenChatWithPrompt}
         />
       )}
     </div>

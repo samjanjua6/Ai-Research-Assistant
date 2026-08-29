@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Copy, Check, Link2 } from 'lucide-react'
+import { Copy, Check, Link2, Sparkles, Scale, Table } from 'lucide-react'
 import { toast } from '../context/ToastContext'
 
 /**
@@ -98,9 +98,9 @@ export function extractSectionMarkdown(headingText, fullMarkdown, level = 2) {
 
 /**
  * SectionHeading component for h2 and h3 elements.
- * Provides hover action buttons: Copy Section Markdown & Copy Deep Link.
+ * Provides hover action buttons: Elaborate, Counter-Args, Copy Section Markdown & Copy Deep Link.
  */
-export function SectionHeading({ level = 2, children, rawMarkdown, ...props }) {
+export function SectionHeading({ level = 2, children, rawMarkdown, onExpandSection, ...props }) {
   const [copiedSection, setCopiedSection] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const headingRef = useRef(null)
@@ -146,6 +146,38 @@ export function SectionHeading({ level = 2, children, rawMarkdown, ...props }) {
       </Tag>
 
       <div className="section-heading-actions">
+        {onExpandSection && (
+          <>
+            <button
+              type="button"
+              className="section-action-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                const sectionText = extractSectionMarkdown(textContent, rawMarkdown, level)
+                onExpandSection(textContent, sectionText, 'elaborate')
+              }}
+              title="Elaborate on this section with deeper empirical details"
+              style={{ color: 'var(--violet)' }}
+            >
+              <Sparkles size={11} strokeWidth={2.2} /> Elaborate
+            </button>
+
+            <button
+              type="button"
+              className="section-action-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                const sectionText = extractSectionMarkdown(textContent, rawMarkdown, level)
+                onExpandSection(textContent, sectionText, 'counter_arguments')
+              }}
+              title="Generate critical counter-arguments and skepticism for this section"
+              style={{ color: '#f59e0b' }}
+            >
+              <Scale size={11} strokeWidth={2.2} /> Counter-Args
+            </button>
+          </>
+        )}
+
         <button
           type="button"
           className="section-action-btn"

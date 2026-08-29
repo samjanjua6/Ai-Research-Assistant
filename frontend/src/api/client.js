@@ -630,6 +630,134 @@ export async function exportCSV(runIds) {
   return res.text()
 }
 
+// ── Interactive "Chat with Report" & Citation Verifier ──────────────
 
+export async function fetchReportChatHistory(runId) {
+  const res = await fetch(`${BASE}/research/${runId}/chat`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
 
+export async function sendReportChatMessageStream(runId, message, chatHistory, onToken, onDone, onError) {
+  try {
+    const res = await fetch(`${BASE}/research/${runId}/chat`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ message, chat_history: chatHistory }),
+    })
 
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || `HTTP ${res.status}`)
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.type === 'token') {
+              onToken?.(data.token)
+            } else if (data.type === 'done') {
+              onDone?.(data.sources_referenced || [])
+            } else if (data.type === 'error') {
+              onError?.(new Error(data.error || 'Chat stream error'))
+            }
+          } catch (e) {
+            console.error('Failed to parse SSE line:', line, e)
+          }
+        }
+      }
+    }
+  } catch (err) {
+    onError?.(err)
+  }
+}
+
+export async function clearReportChatHistory(runId) {
+  const res = await fetch(`${BASE}/research/${runId}/chat`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function expandReportSection(runId, sectionTitle, sectionContent, action = 'elaborate') {
+  const res = await fetch(`${BASE}/research/${runId}/expand-section`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      section_title: sectionTitle,
+      section_content: sectionContent,
+      action,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function explainTextSelection(runId, selectedText, action = 'eli5') {
+  const res = await fetch(`${BASE}/research/${runId}/explain-selection`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      selected_text: selectedText,
+      action,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function appendSectionToReport(runId, sectionTitle, additionContent) {
+  const res = await fetch(`${BASE}/research/${runId}/append-section`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      section_title: sectionTitle,
+      addition_content: additionContent,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function fetchCitationDetails(runId, citationIndex) {
+  const res = await fetch(`${BASE}/research/${runId}/citations/${citationIndex}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
