@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, ExternalLink, ShieldCheck, FileText, MessageSquare, Check, Sparkles, AlertCircle } from 'lucide-react'
 import { fetchCitationDetails } from '../../api/client'
+import { toast } from '../../context/ToastContext'
 
 export function CitationVerifierDrawer({ runId, citationIndex, onClose, onAskInChat }) {
   const [citation, setCitation] = useState(null)
@@ -130,7 +131,7 @@ export function CitationVerifierDrawer({ runId, citationIndex, onClose, onAskInC
                   <span
                     style={{
                       fontSize: '11px',
-                      fontWeight: 700,
+                      fontWeight: 600,
                       padding: '2px 8px',
                       borderRadius: 4,
                       backgroundColor: tierStyle.bg,
@@ -143,6 +144,74 @@ export function CitationVerifierDrawer({ runId, citationIndex, onClose, onAskInC
                   >
                     <ShieldCheck size={12} /> {citation.tier} • {citation.domain}
                   </span>
+
+                  {citation.repository && (
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        backgroundColor: 'rgba(124, 106, 240, 0.12)',
+                        color: 'var(--violet)',
+                        border: '1px solid rgba(124, 106, 240, 0.3)',
+                      }}
+                    >
+                      {citation.repository}
+                    </span>
+                  )}
+
+                  {citation.citation_count !== undefined && citation.citation_count !== null && (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        backgroundColor: 'rgba(6, 182, 212, 0.12)',
+                        color: '#06b6d4',
+                        border: '1px solid rgba(6, 182, 212, 0.3)',
+                      }}
+                    >
+                      📈 {citation.citation_count} Citations
+                    </span>
+                  )}
+
+                  {citation.doi && (
+                    <a
+                      href={`https://doi.org/${citation.doi}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="link-btn"
+                      style={{ fontSize: '11px', color: 'var(--violet)', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                    >
+                      DOI: {citation.doi} <ExternalLink size={10} />
+                    </a>
+                  )}
+
+                  {citation.pdf_url && (
+                    <a
+                      href={citation.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        backgroundColor: 'rgba(16, 185, 129, 0.14)',
+                        color: '#10b981',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <FileText size={11} /> Open PDF
+                    </a>
+                  )}
 
                   {citation.url && (
                     <a
@@ -157,6 +226,51 @@ export function CitationVerifierDrawer({ runId, citationIndex, onClose, onAskInC
                   )}
                 </div>
               </div>
+
+              {/* BibTeX Entry Drawer */}
+              {citation.bibtex && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      LaTeX BibTeX Citation
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(citation.bibtex)
+                        toast.success('BibTeX copied to clipboard!')
+                      }}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        border: '1px solid var(--border)',
+                        backgroundColor: 'var(--panel-alt)',
+                        color: 'var(--text-dim)',
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Copy .bib
+                    </button>
+                  </div>
+                  <pre
+                    style={{
+                      margin: 0,
+                      padding: '10px 12px',
+                      borderRadius: 6,
+                      backgroundColor: 'var(--surface-card)',
+                      border: '1px solid var(--border)',
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-mono)',
+                      color: 'var(--text-dim)',
+                      overflowX: 'auto',
+                      maxHeight: 120,
+                    }}
+                  >
+                    {citation.bibtex}
+                  </pre>
+                </div>
+              )}
 
               {/* Scraped Passage Quote */}
               <div>

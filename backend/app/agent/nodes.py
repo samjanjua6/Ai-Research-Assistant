@@ -16,6 +16,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent.state import GraphState, SearchResult
 from app.agent.tools import search_duckduckgo
+from app.agent.academic_engine import search_academic_aggregator
 from app.agent.scoring import rank_and_filter_results, extract_clean_domain
 from app.agent.doc_parser import score_and_extract_relevant_sections
 from app.agent.url_fetcher import format_grounded_urls_for_context
@@ -163,6 +164,22 @@ async def search_web(state: GraphState) -> dict[str, Any]:
     logger.info("node:search_web", run_id=state["run_id"], loop=state.get("loop_count", 0))
 
     raw_candidates: list[SearchResult] = []
+    source_scope = state.get("source_scope", "all")
+
+    # 1. Dispatch academic repository queries (arXiv, Semantic Scholar, PubMed, Crossref)
+    try:
+        academic_sources = await search_academic_aggregator(
+            query=state["question"],
+            source_scope=source_scope,
+            max_results=settings.search_results_per_step or 4,
+        )
+        for p in academic_sources:
+            p["step"] = state["question"]
+            raw_candidates.append(p)
+    except Exception as exc:
+        logger.warning("academic_search_aggregator_failed", error=str(exc))
+
+    # 2. Dispatch open web searches
     for step in state["steps"]:
         results = search_duckduckgo(
             query=step,
@@ -182,8 +199,8 @@ async def search_web(state: GraphState) -> dict[str, Any]:
     else:
         ranked_results = raw_candidates
 
-    high_count = sum(1 for r in ranked_results if r.get("tier") == "high")
-    good_count = sum(1 for r in ranked_results if r.get("tier") == "good")
+    high_count = sum(1 for r in ranked_results if r.get("tier") in ("high", 1, "1"))
+    good_count = sum(1 for r in ranked_results if r.get("tier") in ("good", 2, "2"))
     logger.info(
         "search_web_scored_and_ranked",
         raw_count=len(raw_candidates),
@@ -473,6 +490,7 @@ async def finalize_report(state: GraphState) -> dict[str, Any]:
         seen_urls.add(url)
         enriched_sources.append({
             "url": url,
+            "title": r.get("title") or r.get("domain") or extract_clean_domain(url),
             "domain": r.get("domain") or extract_clean_domain(url),
             "score": r.get("score_percent", 80),
             "tier": r.get("tier", "good"),
@@ -480,6 +498,21 @@ async def finalize_report(state: GraphState) -> dict[str, Any]:
             "signals": r.get("signals", []),
             "snippet": r.get("snippet", ""),
             "step": r.get("step", ""),
+            # Academic Repository Attributes
+            "is_academic": bool(r.get("is_academic")),
+            "repository": r.get("repository"),
+            "doi": r.get("doi"),
+            "arxiv_id": r.get("arxiv_id"),
+            "pubmed_id": r.get("pubmed_id"),
+            "pmc_id": r.get("pmc_id"),
+            "authors": r.get("authors", []),
+            "year": r.get("year"),
+            "journal_name": r.get("journal_name"),
+            "is_peer_reviewed": bool(r.get("is_peer_reviewed")),
+            "citation_count": r.get("citation_count"),
+            "influential_citations": r.get("influential_citations"),
+            "pdf_url": r.get("pdf_url"),
+            "bibtex": r.get("bibtex"),
         })
 
     logger.info(

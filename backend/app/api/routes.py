@@ -68,6 +68,7 @@ class StartRunRequest(BaseModel):
     documents: list[dict[str, Any]] | None = None
     urls: list[dict[str, Any]] | None = None
     engine: str | None = "langgraph"
+    source_scope: str | None = "all"
 
 
 class RunSummaryResponse(BaseModel):
@@ -159,6 +160,7 @@ async def _run_graph(
     question: str,
     documents: list[dict[str, Any]] | None = None,
     urls: list[dict[str, Any]] | None = None,
+    source_scope: str = "all",
 ) -> None:
     """
     Execute the LangGraph graph in a background task.
@@ -174,6 +176,7 @@ async def _run_graph(
     initial_state: GraphState = {
         "run_id": str(run_id),
         "question": question,
+        "source_scope": source_scope or "all",
         "documents": documents or [],
         "grounded_urls": urls or [],
         "steps": [],
@@ -455,7 +458,7 @@ async def start_research(
         from app.crew.research_crew import run_crew_research
         background_tasks.add_task(run_crew_research, run.id, run.question, body.documents, body.urls)
     else:
-        background_tasks.add_task(_run_graph, run.id, run.question, body.documents, body.urls)
+        background_tasks.add_task(_run_graph, run.id, run.question, body.documents, body.urls, body.source_scope or "all")
 
     logger.info(
         "research_started",

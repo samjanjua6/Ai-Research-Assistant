@@ -828,6 +828,42 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
                         </span>
                       )}
 
+                      {/* Academic Repository Badge */}
+                      {item?.repository && (
+                        <span
+                          style={{
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: 5,
+                            backgroundColor: 'rgba(124, 106, 240, 0.12)',
+                            color: 'var(--violet)',
+                            border: '1px solid rgba(124, 106, 240, 0.3)',
+                          }}
+                        >
+                          {item.repository}
+                        </span>
+                      )}
+
+                      {/* Citation Velocity */}
+                      {item?.citation_count !== undefined && item?.citation_count !== null && (
+                        <span
+                          style={{
+                            fontSize: '10.5px',
+                            fontWeight: 600,
+                            padding: '2px 6px',
+                            borderRadius: 5,
+                            backgroundColor: 'rgba(6, 182, 212, 0.12)',
+                            color: '#06b6d4',
+                            border: '1px solid rgba(6, 182, 212, 0.3)',
+                          }}
+                          title={`Total academic paper citations: ${item.citation_count}`}
+                        >
+                          📈 {item.citation_count} Cites
+                        </span>
+                      )}
+
                       {citeCount > 0 && (
                         <span className="source-cite-chip" title={`Cited ${citeCount} times in this report`}>
                           Cited {citeCount}x
@@ -836,6 +872,33 @@ export default function ReportPanel({ report, question, runId, onSelectQuestion 
                     </div>
 
                     <div className="source-card-actions">
+                      {item?.pdf_url && (
+                        <a
+                          href={item.pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="source-action-icon-btn"
+                          style={{ color: '#10b981', textDecoration: 'none' }}
+                          title="Open direct free full-text PDF"
+                        >
+                          <FileText size={11} strokeWidth={2} /> PDF
+                        </a>
+                      )}
+
+                      {item?.bibtex && (
+                        <button
+                          type="button"
+                          className="source-action-icon-btn"
+                          onClick={() => {
+                            navigator.clipboard.writeText(item.bibtex)
+                            toast.success('BibTeX citation copied to clipboard!')
+                          }}
+                          title="Copy standard LaTeX BibTeX citation"
+                        >
+                          <Copy size={11} strokeWidth={2} /> BibTeX
+                        </button>
+                      )}
+
                       {snippet && (
                         <button
                           type="button"

@@ -21,6 +21,7 @@ import {
   Globe,
   Zap,
   ExternalLink,
+  BookOpen,
 } from 'lucide-react'
 import { uploadDocument, fetchUrlContext } from '../api/client'
 import { toast } from '../context/ToastContext'
@@ -62,6 +63,7 @@ export default function QuestionForm({
   const [localEngine, setLocalEngine] = useState('langgraph')
   const [attachedDocs, setAttachedDocs] = useState([])
   const [attachedUrls, setAttachedUrls] = useState([])
+  const [sourceScope, setSourceScope] = useState('all')
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [showUrlInput, setShowUrlInput] = useState(false)
@@ -98,32 +100,25 @@ export default function QuestionForm({
 
   const handleFilesSelected = async (files) => {
     if (!files || files.length === 0) return
-    const fileList = Array.from(files)
-
-    if (attachedDocs.length + fileList.length > 3) {
-      toast.warning('Maximum 3 attached documents allowed per research run.', { title: 'Upload Limit' })
+    if (attachedDocs.length + files.length > 5) {
+      toast.warning('Maximum 5 attached documents allowed per research run.', { title: 'File Limit' })
       return
     }
 
     setIsUploading(true)
-    for (const file of fileList) {
-      if (file.size > 25 * 1024 * 1024) {
-        toast.error(`File "${file.name}" exceeds the 25MB limit.`, { title: 'File Too Large' })
-        continue
-      }
-
-      try {
-        const docPassport = await uploadDocument(file)
-        setAttachedDocs((prev) => [...prev, docPassport])
-        toast.success(`Attached "${docPassport.filename}" (${docPassport.page_count} pages, ${docPassport.word_count.toLocaleString()} words)`, {
-          title: 'Document Grounded',
-        })
-      } catch (err) {
-        toast.error(err.message || `Failed to process ${file.name}`, { title: 'Upload Error' })
-      }
+    try {
+      const uploadPromises = Array.from(files).map((f) => uploadDocument(f))
+      const results = await Promise.all(uploadPromises)
+      setAttachedDocs((prev) => [...prev, ...results])
+      toast.success(`Attached ${results.length} document${results.length > 1 ? 's' : ''} to inquiry context`, {
+        title: 'Documents Grounded',
+      })
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload document', { title: 'Upload Error' })
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
-    setIsUploading(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleRemoveDoc = (docId) => {
@@ -161,20 +156,20 @@ export default function QuestionForm({
   const handleSubmit = useCallback(() => {
     const q = value.trim()
     if (!q || isLoading) return
-    const payload = { question: q, engine }
+    const payload = { question: q, engine, source_scope: sourceScope }
     if (attachedDocs.length > 0) payload.documents = attachedDocs
     if (attachedUrls.length > 0) payload.urls = attachedUrls
     onSubmit(payload)
-  }, [value, attachedDocs, attachedUrls, engine, isLoading, onSubmit])
+  }, [value, attachedDocs, attachedUrls, engine, sourceScope, isLoading, onSubmit])
 
   const handleRetry = useCallback(() => {
     const q = value.trim()
     if (!q) return
-    const payload = { question: q, engine }
+    const payload = { question: q, engine, source_scope: sourceScope }
     if (attachedDocs.length > 0) payload.documents = attachedDocs
     if (attachedUrls.length > 0) payload.urls = attachedUrls
     onSubmit(payload)
-  }, [value, attachedDocs, attachedUrls, engine, onSubmit])
+  }, [value, attachedDocs, attachedUrls, engine, sourceScope, onSubmit])
 
   const handleSelectLens = (lens) => {
     const current = value.trim()
@@ -626,6 +621,56 @@ export default function QuestionForm({
               >
                 <Icon size={13} strokeWidth={2} />
                 <span>{l.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Literature Ingestion Scope ── */}
+      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Academic Literature Scope
+          </span>
+          <span style={{ fontSize: '10.5px', color: 'var(--text-faint)' }}>
+            arXiv · PubMed · Semantic Scholar
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[
+            { id: 'all', label: 'All Sources', icon: Globe },
+            { id: 'academic', label: 'Peer-Reviewed', icon: BookOpen },
+            { id: 'preprints', label: 'Preprints', icon: FileText },
+          ].map((scope) => {
+            const isSel = sourceScope === scope.id
+            const Icon = scope.icon
+            return (
+              <button
+                key={scope.id}
+                type="button"
+                onClick={() => setSourceScope(scope.id)}
+                style={{
+                  flex: 1,
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '5px 8px',
+                  borderRadius: 6,
+                  border: isSel ? '1px solid var(--violet)' : '1px solid var(--border)',
+                  backgroundColor: isSel ? 'rgba(124, 106, 240, 0.12)' : 'transparent',
+                  color: isSel ? 'var(--violet)' : 'var(--text-dim)',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Icon size={11} strokeWidth={2} />
+                <span>{scope.label}</span>
               </button>
             )
           })}

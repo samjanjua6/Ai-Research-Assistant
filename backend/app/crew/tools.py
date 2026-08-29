@@ -88,16 +88,74 @@ def build_crew_tools(
         except Exception as exc:
             return f"Error reading attached documents: {str(exc)}"
 
-    @tool("Read Grounded Web URLs")
-    def read_grounded_urls(inquiry: str = "", **kwargs: Any) -> str:
+    @tool("Search Academic Literature")
+    def search_academic_literature(query: str, **kwargs: Any) -> str:
         """
-        Retrieve clean, extracted text from grounded web URLs (e.g. arXiv papers, GitHub repos, Wikipedia articles).
+        Query dedicated academic repositories (arXiv, Semantic Scholar, PubMed, Crossref)
+        for peer-reviewed studies, author DOIs, citation counts, and validated abstracts.
         """
-        if not urls:
-            return "No grounded web URLs provided for this research inquiry."
         try:
-            return format_grounded_urls_for_context(urls, max_chars=25000)
-        except Exception as exc:
-            return f"Error reading grounded URLs: {str(exc)}"
+            from app.agent.academic_engine import search_academic_aggregator
+            import concurrent.futures
 
-    return [search_live_web, search_attached_documents, read_grounded_urls]
+            def _fetch():
+                loop = asyncio.new_event_loop()
+                try:
+                    return loop.run_until_complete(search_academic_aggregator(query, max_results=4))
+                finally:
+                    loop.close()
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                papers = pool.submit(_fetch).result(timeout=6.0)
+
+            if not papers:
+                return f"No academic papers found for query: '{query}'"
+
+            output_lines = []
+            for p in papers:
+                idx = len(sources_collector) + 1
+                title = p.get("title", "Untitled Paper")
+                url = p.get("url", "")
+                snippet = p.get("snippet", "")
+                doi = p.get("doi") or ""
+                citations = p.get("citation_count")
+                repo = p.get("repository", "academic").upper()
+
+                source_record = {
+                    "index": idx,
+                    "title": title,
+                    "url": url,
+                    "snippet": snippet,
+                    "domain": p.get("domain", "academic"),
+                    "score": 0.95,
+                    "tier": 1,
+                    "authority_label": f"Academic ({repo})",
+                    "signals": ["Peer-Reviewed / Preprint", f"Repository: {repo}"],
+                    "is_academic": True,
+                    "repository": p.get("repository"),
+                    "doi": doi,
+                    "arxiv_id": p.get("arxiv_id"),
+                    "pubmed_id": p.get("pubmed_id"),
+                    "authors": p.get("authors", []),
+                    "year": p.get("year"),
+                    "journal_name": p.get("journal_name"),
+                    "is_peer_reviewed": p.get("is_peer_reviewed", True),
+                    "citation_count": citations,
+                    "pdf_url": p.get("pdf_url"),
+                    "bibtex": p.get("bibtex"),
+                    "step": query,
+                }
+                sources_collector.append(source_record)
+                cite_str = f" · Citations: {citations}" if citations else ""
+                doi_str = f" · DOI: {doi}" if doi else ""
+                output_lines.append(
+                    f"[{idx}] {title} ({repo}{cite_str}{doi_str})\n"
+                    f"URL: {url}\n"
+                    f"Abstract: {snippet}\n"
+                )
+
+            return "\n".join(output_lines)
+        except Exception as exc:
+            return f"Error executing academic literature search: {str(exc)}"
+
+    return [search_live_web, search_academic_literature, search_attached_documents, read_grounded_urls]
