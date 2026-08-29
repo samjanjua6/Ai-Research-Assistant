@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck, Users, Zap, Sparkles, BarChart2, Folder, BookOpen } from 'lucide-react'
+import { Plus, LogOut, PanelLeft, Trash2, ChevronDown, KeyRound, ShieldCheck, Users, Zap, Sparkles, BarChart2, Folder, BookOpen, Compass } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { DeleteAccountModal } from './DeleteAccountModal'
@@ -8,7 +8,17 @@ import { ThemeToggle } from './ThemeToggle'
 import { useToast } from '../context/ToastContext'
 import { Logo } from './brand/Logo'
 
-export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResearch, onOpenAdmin, onOpenAnalytics, onOpenLibrary, engine }) {
+export default function Header({
+  isSidebarCollapsed,
+  onToggleSidebar,
+  onNewResearch,
+  onOpenAdmin,
+  onOpenAnalytics,
+  onOpenLibrary,
+  onOpenDiscover,
+  isDiscoverView,
+  engine,
+}) {
   const { user, logout } = useAuth()
   const { info: toastInfo } = useToast()
   const [showAuth, setShowAuth] = useState(false)
@@ -125,6 +135,31 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
 
           <ThemeToggle />
 
+          {onOpenDiscover && (
+            <button
+              type="button"
+              className="topbar-btn"
+              onClick={onOpenDiscover}
+              style={{
+                background: isDiscoverView ? 'rgba(124, 106, 240, 0.15)' : 'transparent',
+                border: isDiscoverView ? '1px solid var(--violet)' : '1px solid var(--border)',
+                color: isDiscoverView ? 'var(--violet)' : 'var(--text-dim)',
+                padding: '5px 11px',
+                borderRadius: '7px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+              }}
+              title="Explore public community research showcase (/discover)"
+            >
+              <Compass size={13} strokeWidth={2} />
+              <span>Discover</span>
+            </button>
+          )}
+
           {user ? (
             <div className="user-menu-wrapper" ref={menuRef} style={{ position: 'relative' }}>
               <button
@@ -213,6 +248,33 @@ export default function Header({ isSidebarCollapsed, onToggleSidebar, onNewResea
                       <span>Admin Studio</span>
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    className="dropdown-item"
+                    onClick={() => {
+                      setShowUserMenu(false)
+                      onOpenDiscover?.()
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      fontSize: '12.5px',
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      cursor: 'pointer',
+                      marginBottom: 2,
+                    }}
+                  >
+                    <Compass size={13} strokeWidth={2} style={{ color: 'var(--cyan)' }} />
+                    <span>Discover Showcase</span>
+                  </button>
 
                   <button
                     type="button"

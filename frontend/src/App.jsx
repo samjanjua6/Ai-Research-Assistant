@@ -16,6 +16,7 @@ import LiveDraftPreview from './components/LiveDraftPreview'
 import { AdminDashboard } from './components/admin/AdminDashboard'
 import { UsageAnalyticsDashboard } from './components/analytics/UsageAnalyticsDashboard'
 import { ResearchLibraryHub } from './components/library/ResearchLibraryHub'
+import PublicDiscoverShowcase from './components/discover/PublicDiscoverShowcase'
 import { ErrorStateIllustration, EmptyState } from './components/illustrations/EmptyStateIllustrations'
 import { LogoMark } from './components/brand/Logo'
 
@@ -49,6 +50,15 @@ function getIsLibraryPath() {
     window.location.pathname === '/library' ||
     window.location.pathname.startsWith('/library/') ||
     window.location.search.includes('view=library')
+  )
+}
+
+function getIsDiscoverPath() {
+  if (typeof window === 'undefined') return false
+  return (
+    window.location.pathname === '/discover' ||
+    window.location.pathname.startsWith('/discover/') ||
+    window.location.search.includes('view=discover')
   )
 }
 
@@ -93,6 +103,7 @@ export default function App() {
   const [isAdminView,         setIsAdminView]         = useState(getIsAdminPath)
   const [isAnalyticsView,     setIsAnalyticsView]     = useState(getIsAnalyticsPath)
   const [isLibraryView,       setIsLibraryView]       = useState(getIsLibraryPath)
+  const [isDiscoverView,      setIsDiscoverView]      = useState(getIsDiscoverPath)
   const [magicReset,          setMagicReset]          = useState(getMagicResetParams)
   const [isSidebarCollapsed,  setIsSidebarCollapsed]  = useState(getInitialSidebarState)
   const [activeRunId,         setActiveRunId]         = useState(null)
@@ -159,6 +170,9 @@ export default function App() {
     const handlePopState = () => {
       setShareToken(getShareTokenFromPath())
       setIsAdminView(getIsAdminPath())
+      setIsAnalyticsView(getIsAnalyticsPath())
+      setIsLibraryView(getIsLibraryPath())
+      setIsDiscoverView(getIsDiscoverPath())
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
@@ -286,6 +300,11 @@ export default function App() {
             setIsLibraryView(true)
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/library')
           }}
+          onOpenDiscover={() => {
+            setIsAnalyticsView(false)
+            setIsDiscoverView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/discover')
+          }}
           engine={currentEngine}
         />
         <main className="main-content" style={{ padding: '20px 24px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -335,6 +354,11 @@ export default function App() {
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/analytics')
           }}
           onOpenLibrary={() => {}}
+          onOpenDiscover={() => {
+            setIsLibraryView(false)
+            setIsDiscoverView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/discover')
+          }}
           engine={currentEngine}
         />
         <main className="main-content" style={{ padding: '20px 24px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -349,6 +373,68 @@ export default function App() {
               setActiveRunId(runId)
               setActiveQuestion(question)
               viewRun(runId)
+            }}
+          />
+        </main>
+      </div>
+    )
+  }
+
+  // If visiting public research discover showcase (/discover)
+  if (isDiscoverView) {
+    return (
+      <div className="app-layout" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Header
+          isSidebarCollapsed={true}
+          onToggleSidebar={() => {}}
+          onNewResearch={() => {
+            setIsDiscoverView(false)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+            handleNewResearch()
+          }}
+          onOpenAdmin={() => {
+            setIsDiscoverView(false)
+            setIsAdminView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/admin')
+          }}
+          onOpenAnalytics={() => {
+            setIsDiscoverView(false)
+            setIsAnalyticsView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/analytics')
+          }}
+          onOpenLibrary={() => {
+            setIsDiscoverView(false)
+            setIsLibraryView(true)
+            if (typeof window !== 'undefined') window.history.pushState({}, '', '/library')
+          }}
+          onOpenDiscover={() => {}}
+          isDiscoverView={true}
+          engine={currentEngine}
+        />
+        <main className="main-content" style={{ padding: '20px 24px', maxWidth: '100%', margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+          <PublicDiscoverShowcase
+            onNavigateHome={() => {
+              setIsDiscoverView(false)
+              if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+            }}
+            onLaunchForkInquiry={(forkedPrompt, forkEngine, parentId) => {
+              setIsDiscoverView(false)
+              if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+              setFormQuestion(forkedPrompt)
+              setSelectedEngine(forkEngine || 'langgraph')
+              handleSubmit({ question: forkedPrompt, engine: forkEngine || 'langgraph' })
+            }}
+            onOpenPublicReport={(publicRun) => {
+              if (publicRun.share_token) {
+                setShareToken(publicRun.share_token)
+                if (typeof window !== 'undefined') window.history.pushState({}, '', `/r/${publicRun.share_token}`)
+              } else {
+                setIsDiscoverView(false)
+                if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+                setActiveRunId(publicRun.id)
+                setActiveQuestion(publicRun.question)
+                viewRun(publicRun.id)
+              }
             }}
           />
         </main>
@@ -379,23 +465,34 @@ export default function App() {
         onToggleSidebar={handleToggleSidebar}
         onNewResearch={handleNewResearch}
         engine={currentEngine}
+        isDiscoverView={isDiscoverView}
         onOpenAdmin={() => {
           setIsAdminView(true)
           setIsAnalyticsView(false)
           setIsLibraryView(false)
+          setIsDiscoverView(false)
           window.history.pushState({}, '', '/admin')
         }}
         onOpenAnalytics={() => {
           setIsAnalyticsView(true)
           setIsAdminView(false)
           setIsLibraryView(false)
+          setIsDiscoverView(false)
           window.history.pushState({}, '', '/analytics')
         }}
         onOpenLibrary={() => {
           setIsLibraryView(true)
           setIsAdminView(false)
           setIsAnalyticsView(false)
+          setIsDiscoverView(false)
           window.history.pushState({}, '', '/library')
+        }}
+        onOpenDiscover={() => {
+          setIsDiscoverView(true)
+          setIsAdminView(false)
+          setIsAnalyticsView(false)
+          setIsLibraryView(false)
+          window.history.pushState({}, '', '/discover')
         }}
       />
 

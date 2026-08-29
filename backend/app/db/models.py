@@ -91,6 +91,15 @@ class ResearchRun(Base):
     is_bookmarked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     tags: Mapped[list | None] = mapped_column(JSONB, default=list, nullable=True)
     user_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    upvotes_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    category: Mapped[str | None] = mapped_column(String(50), default="ai", nullable=True, index=True)
+    forked_from_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("research_runs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    fork_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now
     )
@@ -104,6 +113,9 @@ class ResearchRun(Base):
     )
     collection_items: Mapped[list["CollectionItem"]] = relationship(
         back_populates="run", cascade="all, delete-orphan"
+    )
+    forked_from: Mapped["ResearchRun | None"] = relationship(
+        remote_side="ResearchRun.id"
     )
 
 

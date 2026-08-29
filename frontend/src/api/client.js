@@ -761,3 +761,58 @@ export async function fetchCitationDetails(runId, citationIndex) {
   }
   return res.json()
 }
+
+// ── Public Discover Showcase & Fork Flywheel ───────────────────────
+
+export async function fetchDiscoverFeed({ category = 'all', sortBy = 'trending', search = '', engine = 'all', limit = 20, offset = 0 } = {}) {
+  const params = new URLSearchParams()
+  if (category) params.set('category', category)
+  if (sortBy) params.set('sort_by', sortBy)
+  if (search) params.set('search', search)
+  if (engine) params.set('engine', engine)
+  params.set('limit', String(limit))
+  params.set('offset', String(offset))
+
+  const res = await fetch(`${BASE}/public/discover/feed?${params.toString()}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function fetchDiscoverStats() {
+  const res = await fetch(`${BASE}/public/discover/stats`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function upvoteReport(runId, count = 1) {
+  const res = await fetch(`${BASE}/public/discover/${runId}/upvote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ count }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function forkReportInquiry(runId, newLens, newQuestion) {
+  const res = await fetch(`${BASE}/public/discover/${runId}/fork`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_lens: newLens, new_question: newQuestion }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
