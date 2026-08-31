@@ -158,4 +158,16 @@ def build_crew_tools(
         except Exception as exc:
             return f"Error executing academic literature search: {str(exc)}"
 
+    @tool("Read Grounded Web URLs")
+    def read_grounded_urls(inquiry: str = "", **kwargs: Any) -> str:
+        """
+        Retrieve clean, extracted text from grounded web URLs (e.g. arXiv papers, GitHub repos, Wikipedia articles).
+        """
+        if not urls:
+            return "No grounded web URLs provided for this research inquiry."
+        try:
+            return format_grounded_urls_for_context(urls, max_chars=25000)
+        except Exception as exc:
+            return f"Error reading grounded URLs: {str(exc)}"
+
     return [search_live_web, search_academic_literature, search_attached_documents, read_grounded_urls]
