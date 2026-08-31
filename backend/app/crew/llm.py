@@ -36,10 +36,10 @@ try:
     _orig_acompletion = litellm.acompletion
 
     FALLBACK_MODELS = [
-        "groq/llama-3.3-70b-versatile",
-        "groq/llama-3.1-70b-versatile",
-        "groq/llama-3.1-8b-instant",
-        "groq/mixtral-8x7b-32768",
+        "groq/openai/gpt-oss-120b",
+        "groq/openai/gpt-oss-20b",
+        "groq/qwen/qwen3.8-27b",
+        "groq/qwen/qwen3.6-27b",
     ]
 
     def _parse_retry_seconds(err_str: str) -> float:
@@ -55,12 +55,10 @@ try:
 
     def _rate_limit_safe_completion(*args: Any, **kwargs: Any) -> Any:
         current_kwargs = dict(kwargs)
-        original_model = current_kwargs.get("model", "groq/llama-3.3-70b-versatile")
-        if "gpt-oss" in original_model or "qwen" in original_model:
-            original_model = "groq/llama-3.3-70b-versatile"
+        original_model = current_kwargs.get("model", "groq/openai/gpt-oss-120b")
         model_pool = [original_model] + [m for m in FALLBACK_MODELS if m != original_model]
 
-        # Ensure tool_choice is auto if tools are passed
+        # Always enforce tool_choice="auto" whenever tools are present
         if current_kwargs.get("tools"):
             current_kwargs["tool_choice"] = "auto"
         elif current_kwargs.get("tool_choice") == "none":
@@ -75,7 +73,6 @@ try:
                 err_str = str(e).lower()
                 if "tool_use_failed" in err_str or "tool choice is none" in err_str:
                     current_kwargs["tool_choice"] = "auto"
-                    current_kwargs["model"] = "groq/llama-3.3-70b-versatile"
                     time.sleep(0.5)
                     continue
                 if isinstance(e, litellm.RateLimitError) or "rate_limit" in err_str or "429" in err_str or "tpm" in err_str or "tpd" in err_str:
@@ -90,9 +87,7 @@ try:
 
     async def _rate_limit_safe_acompletion(*args: Any, **kwargs: Any) -> Any:
         current_kwargs = dict(kwargs)
-        original_model = current_kwargs.get("model", "groq/llama-3.3-70b-versatile")
-        if "gpt-oss" in original_model or "qwen" in original_model:
-            original_model = "groq/llama-3.3-70b-versatile"
+        original_model = current_kwargs.get("model", "groq/openai/gpt-oss-120b")
         model_pool = [original_model] + [m for m in FALLBACK_MODELS if m != original_model]
 
         if current_kwargs.get("tools"):
@@ -109,7 +104,6 @@ try:
                 err_str = str(e).lower()
                 if "tool_use_failed" in err_str or "tool choice is none" in err_str:
                     current_kwargs["tool_choice"] = "auto"
-                    current_kwargs["model"] = "groq/llama-3.3-70b-versatile"
                     await asyncio.sleep(0.5)
                     continue
                 if isinstance(e, litellm.RateLimitError) or "rate_limit" in err_str or "429" in err_str or "tpm" in err_str or "tpd" in err_str:
@@ -135,20 +129,24 @@ def get_crew_llm():
     Returns an LLM instance configured for CrewAI agents.
     Uses Groq API key with optimal multi-agent token throughput.
     """
+    model_name = settings.groq_model
+    if not model_name.startswith("groq/"):
+        model_name = f"groq/{model_name}"
+
     try:
         from crewai import LLM
-        model_name = "llama-3.3-70b-versatile"
         return LLM(
-            model=f"groq/{model_name}",
+            model=model_name,
             api_key=settings.groq_api_key,
             temperature=0.3,
             max_retries=6,
         )
     except Exception:
         from langchain_groq import ChatGroq
+        clean_name = model_name.replace("groq/", "")
         return ChatGroq(
             api_key=settings.groq_api_key,
-            model="llama-3.3-70b-versatile",
+            model=clean_name,
             temperature=0.3,
             max_retries=6,
         )
