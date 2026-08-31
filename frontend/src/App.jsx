@@ -20,6 +20,7 @@ import PublicDiscoverShowcase from './components/discover/PublicDiscoverShowcase
 import UserSettingsHub from './components/settings/UserSettingsHub'
 import { ErrorStateIllustration, EmptyState } from './components/illustrations/EmptyStateIllustrations'
 import { LogoMark } from './components/brand/Logo'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 function getShareTokenFromPath() {
   if (typeof window === 'undefined') return null
@@ -701,23 +702,25 @@ export default function App() {
 
           {/* Final report */}
           {showReport && (
-            <ReportPanel
-              report={report}
-              question={activeQuestion}
-              runId={currentRunId}
-              onSelectQuestion={(qText, autoSubmit) => {
-                setFormQuestion(qText)
-                if (autoSubmit) {
-                  handleSubmit(qText)
-                } else {
-                  const input = document.querySelector('.question-input')
-                  if (input) {
-                    input.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                    input.focus()
+            <ErrorBoundary>
+              <ReportPanel
+                report={report}
+                question={activeQuestion}
+                runId={currentRunId}
+                onSelectQuestion={(qText, autoSubmit) => {
+                  setFormQuestion(qText)
+                  if (autoSubmit) {
+                    handleSubmit(qText)
+                  } else {
+                    const input = document.querySelector('.question-input')
+                    if (input) {
+                      input.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                      input.focus()
+                    }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            </ErrorBoundary>
           )}
 
           {/* Error Recovery Card */}
