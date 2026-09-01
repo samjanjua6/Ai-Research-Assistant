@@ -21,6 +21,7 @@ import {
   clearReportChatHistory,
 } from '../../api/client'
 import { useToast } from '../../context/ToastContext'
+import { cleanThinkTags } from '../../utils/citations'
 
 const QUICK_PROMPTS = [
   'Where do the sources disagree on key conclusions?',
@@ -330,7 +331,7 @@ export function ChatWithReportDrawer({
                     <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
                   ) : (
                     <div className="report-markdown-content" style={{ fontSize: '13px' }}>
-                      <Markdown remarkPlugins={[remarkGfm]}>{m.content}</Markdown>
+                      <Markdown remarkPlugins={[remarkGfm]}>{cleanThinkTags(m.content)}</Markdown>
                     </div>
                   )}
 
@@ -398,7 +399,7 @@ export function ChatWithReportDrawer({
                 }}
               >
                 <div className="report-markdown-content" style={{ fontSize: '13px' }}>
-                  <Markdown remarkPlugins={[remarkGfm]}>{streamingContent}</Markdown>
+                  <Markdown remarkPlugins={[remarkGfm]}>{cleanThinkTags(streamingContent)}</Markdown>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, color: 'var(--violet)', fontSize: '11.5px' }}>
                   <Sparkles size={12} className="animate-spin" /> Generating grounded answer...
