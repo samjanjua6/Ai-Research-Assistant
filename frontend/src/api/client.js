@@ -20,9 +20,20 @@ export function clearToken() {
   localStorage.removeItem('auth_token')
 }
 
-function authHeaders() {
+function authHeaders(extra = {}) {
   const token = getToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  return token ? { Authorization: `Bearer ${token}`, ...extra } : { ...extra }
+}
+
+export function formatErrorDetail(err, fallback = 'Request failed') {
+  if (!err) return fallback
+  if (typeof err === 'string') return err
+  if (typeof err.detail === 'string') return err.detail
+  if (Array.isArray(err.detail)) {
+    return err.detail.map((d) => (typeof d === 'string' ? d : d.msg || JSON.stringify(d))).join(', ')
+  }
+  if (err.message) return typeof err.message === 'string' ? err.message : JSON.stringify(err.message)
+  return fallback
 }
 
 // ── Auth endpoints ─────────────────────────────────────────────────
@@ -657,7 +668,7 @@ export async function sendReportChatMessageStream(runId, message, chatHistory, o
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail || `HTTP ${res.status}`)
+      throw new Error(formatErrorDetail(err, `HTTP ${res.status}`))
     }
 
     const reader = res.body.getReader()

@@ -37,11 +37,23 @@ export function ToastProvider({ children }) {
         return updated
       }
 
+      let rawMsg = toastData.message
+      let msgStr = ''
+      if (typeof rawMsg === 'string') {
+        msgStr = rawMsg
+      } else if (rawMsg instanceof Error) {
+        msgStr = rawMsg.message
+      } else if (rawMsg && typeof rawMsg === 'object') {
+        msgStr = rawMsg.detail || rawMsg.message || rawMsg.error || JSON.stringify(rawMsg)
+      } else {
+        msgStr = String(rawMsg || '')
+      }
+
       const newToast = {
         id,
         type: toastData.type || 'info',
         title: toastData.title,
-        message: toastData.message,
+        message: msgStr,
         action: toastData.action, // { label: string, onClick: func }
         duration,
         createdAt: Date.now(),
