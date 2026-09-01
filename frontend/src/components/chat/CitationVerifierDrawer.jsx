@@ -31,8 +31,9 @@ export function CitationVerifierDrawer({ runId, citationIndex, onClose, onAskInC
   }, [runId, citationIndex])
 
   const getTierColor = (tier) => {
-    if (tier?.includes('1')) return { bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' }
-    if (tier?.includes('2')) return { bg: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', border: 'rgba(6, 182, 212, 0.3)' }
+    const t = String(tier || '')
+    if (t.includes('1')) return { bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' }
+    if (t.includes('2')) return { bg: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', border: 'rgba(6, 182, 212, 0.3)' }
     return { bg: 'rgba(124, 106, 240, 0.15)', color: 'var(--violet)', border: 'rgba(124, 106, 240, 0.3)' }
   }
 

@@ -830,7 +830,7 @@ export function PublicReportView({ shareToken, onForkQuestion, onGoHome }) {
                                       score >= 80 ? '#10b98144' : score >= 60 ? '#06b6d444' : '#f59e0b44'
                                     }`,
                                   }}
-                                  title={`Relevance Quality Score: ${score}% (${tier ? tier.toUpperCase() : 'QUALITY'})`}
+                                  title={`Relevance Quality Score: ${score}% (${tier ? String(tier).toUpperCase() : 'QUALITY'})`}
                                 >
                                   <Sparkles size={10} strokeWidth={2.2} />
                                   <span>{score}% Relevance</span>
