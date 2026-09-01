@@ -57,6 +57,41 @@ def _format_grounding_context(run: ResearchRun) -> str:
     return context
 
 
+FALLBACK_CHAT_MODELS = [
+    "groq/openai/gpt-oss-120b",
+    "groq/openai/gpt-oss-20b",
+    "groq/qwen/qwen3.8-27b",
+    "groq/qwen/qwen3.6-27b",
+]
+
+
+async def _safe_acompletion(**kwargs) -> Any:
+    """Invokes acompletion with automatic multi-model fallback on rate limit / TPM exhaustion."""
+    preferred = kwargs.pop("model", None) or settings.groq_model
+    if not preferred.startswith("groq/"):
+        preferred = f"groq/{preferred}"
+
+    model_pool = [preferred] + [m for m in FALLBACK_CHAT_MODELS if m != preferred]
+
+    last_err = None
+    for model_to_try in model_pool:
+        try:
+            return await acompletion(
+                model=model_to_try,
+                api_key=settings.groq_api_key,
+                **kwargs,
+            )
+        except Exception as err:
+            last_err = err
+            err_lower = str(err).lower()
+            if "rate_limit" in err_lower or "429" in err_lower or "tpm" in err_lower or "tokens" in err_lower:
+                logger.warning("report_chat_rate_limited_fallback", from_model=model_to_try, error=str(err))
+                continue
+            raise err
+
+    raise last_err or RuntimeError("All LLM models in pool exceeded rate limits.")
+
+
 async def stream_chat_with_report(
     run: ResearchRun,
     message: str,
@@ -107,13 +142,7 @@ RULES:
     full_assistant_response = []
 
     try:
-        model_name = settings.groq_model
-        if not model_name.startswith("groq/"):
-            model_name = f"groq/{model_name}"
-
-        response = await acompletion(
-            model=model_name,
-            api_key=settings.groq_api_key,
+        response = await _safe_acompletion(
             messages=messages,
             temperature=0.25,
             max_tokens=2500,
@@ -195,13 +224,7 @@ FULL REPORT & EVIDENCE:
 Return ONLY the high-density Markdown addition for this section with citations ([1], [2]). Do not repeat the section title heading.
 """
 
-    model_name = settings.groq_model
-    if not model_name.startswith("groq/"):
-        model_name = f"groq/{model_name}"
-
-    response = await acompletion(
-        model=model_name,
-        api_key=settings.groq_api_key,
+    response = await _safe_acompletion(
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
         max_tokens=2000,
@@ -243,13 +266,7 @@ INSTRUCTION: {instruction}
 Return a concise, direct 2-3 paragraph response in GitHub Markdown.
 """
 
-    model_name = settings.groq_model
-    if not model_name.startswith("groq/"):
-        model_name = f"groq/{model_name}"
-
-    response = await acompletion(
-        model=model_name,
-        api_key=settings.groq_api_key,
+    response = await _safe_acompletion(
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
         max_tokens=1000,

@@ -645,10 +645,14 @@ export async function fetchReportChatHistory(runId) {
 
 export async function sendReportChatMessageStream(runId, message, chatHistory, onToken, onDone, onError) {
   try {
+    const safeHistory = Array.isArray(chatHistory)
+      ? chatHistory.map((m) => ({ role: m?.role || 'user', content: String(m?.content || '') }))
+      : []
+
     const res = await fetch(`${BASE}/research/${runId}/chat`, {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ message, chat_history: chatHistory }),
+      body: JSON.stringify({ message: String(message || '').trim(), chat_history: safeHistory }),
     })
 
     if (!res.ok) {

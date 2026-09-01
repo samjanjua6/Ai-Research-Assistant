@@ -37,7 +37,7 @@ router = APIRouter(prefix="/research", tags=["report-chat"])
 
 class ChatMessageRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=50000)
-    chat_history: list[dict[str, Any]] = Field(default_factory=list)
+    chat_history: list[dict[str, Any]] | None = Field(default_factory=list)
 
 
 class ExpandSectionRequest(BaseModel):
@@ -106,7 +106,7 @@ async def send_report_chat_message(
         stream_chat_with_report(
             run=run,
             message=req.message.strip(),
-            chat_history=req.chat_history,
+            chat_history=req.chat_history or [],
             user_id=user_id,
             db=db,
         ),
