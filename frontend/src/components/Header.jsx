@@ -17,6 +17,7 @@ export default function Header({
   onOpenLibrary,
   onOpenDiscover,
   onOpenSettings,
+  onOpenLanding,
   isDiscoverView,
   engine,
 }) {
@@ -135,6 +136,31 @@ export default function Header({
           )}
 
           <ThemeToggle />
+
+          {onOpenLanding && (
+            <button
+              type="button"
+              className="topbar-btn"
+              onClick={onOpenLanding}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--border)',
+                color: 'var(--text-dim)',
+                padding: '5px 11px',
+                borderRadius: '7px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+              }}
+              title="Product Tour & Features (/landing)"
+            >
+              <Sparkles size={13} strokeWidth={2} style={{ color: 'var(--violet)' }} />
+              <span>Tour</span>
+            </button>
+          )}
 
           {onOpenDiscover && (
             <button

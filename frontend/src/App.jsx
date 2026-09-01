@@ -18,6 +18,7 @@ import { UsageAnalyticsDashboard } from './components/analytics/UsageAnalyticsDa
 import { ResearchLibraryHub } from './components/library/ResearchLibraryHub'
 import PublicDiscoverShowcase from './components/discover/PublicDiscoverShowcase'
 import UserSettingsHub from './components/settings/UserSettingsHub'
+import LandingPage from './components/landing/LandingPage'
 import { ErrorStateIllustration, EmptyState } from './components/illustrations/EmptyStateIllustrations'
 import { LogoMark } from './components/brand/Logo'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -26,6 +27,15 @@ function getShareTokenFromPath() {
   if (typeof window === 'undefined') return null
   const match = window.location.pathname.match(/^\/r\/([a-zA-Z0-9_-]+)/)
   return match ? match[1] : null
+}
+
+function getIsLandingPath() {
+  if (typeof window === 'undefined') return false
+  return (
+    window.location.pathname === '/landing' ||
+    window.location.pathname.startsWith('/landing/') ||
+    window.location.search.includes('view=landing')
+  )
 }
 
 function getIsAdminPath() {
@@ -111,6 +121,7 @@ export default function App() {
   } = useResearch(user)
 
   const [shareToken,          setShareToken]          = useState(getShareTokenFromPath)
+  const [isLandingView,       setIsLandingView]       = useState(getIsLandingPath)
   const [isAdminView,         setIsAdminView]         = useState(getIsAdminPath)
   const [isAnalyticsView,     setIsAnalyticsView]     = useState(getIsAnalyticsPath)
   const [isLibraryView,       setIsLibraryView]       = useState(getIsLibraryPath)
@@ -181,6 +192,7 @@ export default function App() {
   useEffect(() => {
     const handlePopState = () => {
       setShareToken(getShareTokenFromPath())
+      setIsLandingView(getIsLandingPath())
       setIsAdminView(getIsAdminPath())
       setIsAnalyticsView(getIsAnalyticsPath())
       setIsLibraryView(getIsLibraryPath())
@@ -190,6 +202,41 @@ export default function App() {
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
+
+  // ── Landing & Workspace Navigation ───────────────────────────
+  const handleOpenLanding = () => {
+    setIsLandingView(true)
+    setIsAdminView(false)
+    setIsAnalyticsView(false)
+    setIsLibraryView(false)
+    setIsDiscoverView(false)
+    setIsSettingsView(false)
+    if (typeof window !== 'undefined') window.history.pushState({}, '', '/landing')
+  }
+
+  const handleOpenWorkspace = () => {
+    setIsLandingView(false)
+    setIsAdminView(false)
+    setIsAnalyticsView(false)
+    setIsLibraryView(false)
+    setIsDiscoverView(false)
+    setIsSettingsView(false)
+    if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+  }
+
+  const handleSelectPromptFromLanding = (promptQuery) => {
+    setIsLandingView(false)
+    setIsAdminView(false)
+    setIsAnalyticsView(false)
+    setIsLibraryView(false)
+    setIsDiscoverView(false)
+    setIsSettingsView(false)
+    if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
+    setFormQuestion(promptQuery)
+    setTimeout(() => {
+      handleSubmit(promptQuery)
+    }, 150)
+  }
 
   // ── Handlers ─────────────────────────────────────────────────
   const handleSubmit = (payload) => {
@@ -302,6 +349,7 @@ export default function App() {
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
             handleNewResearch()
           }}
+          onOpenLanding={handleOpenLanding}
           onOpenAdmin={() => {
             setIsAnalyticsView(false)
             setIsAdminView(true)
@@ -361,6 +409,7 @@ export default function App() {
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
             handleNewResearch()
           }}
+          onOpenLanding={handleOpenLanding}
           onOpenAdmin={() => {
             setIsLibraryView(false)
             setIsAdminView(true)
@@ -415,6 +464,7 @@ export default function App() {
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
             handleNewResearch()
           }}
+          onOpenLanding={handleOpenLanding}
           onOpenAdmin={() => {
             setIsDiscoverView(false)
             setIsAdminView(true)
@@ -482,6 +532,7 @@ export default function App() {
             if (typeof window !== 'undefined') window.history.pushState({}, '', '/')
             handleNewResearch()
           }}
+          onOpenLanding={handleOpenLanding}
           onOpenAdmin={() => {
             setIsSettingsView(false)
             setIsAdminView(true)
@@ -540,6 +591,29 @@ export default function App() {
     )
   }
 
+  // Show Landing Page
+  if (isLandingView) {
+    return (
+      <>
+        <LandingPage
+          onSelectPrompt={handleSelectPromptFromLanding}
+          onOpenWorkspace={handleOpenWorkspace}
+          onOpenAuth={() => {
+            setAuthDefaultTab('login')
+            setShowAuthModal(true)
+          }}
+        />
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={handleAuthSuccess}
+            defaultTab={authDefaultTab}
+          />
+        )}
+      </>
+    )
+  }
+
   return (
     <>
       <Header
@@ -549,6 +623,7 @@ export default function App() {
         engine={currentEngine}
         isDiscoverView={isDiscoverView}
         isSettingsView={isSettingsView}
+        onOpenLanding={handleOpenLanding}
         onOpenAdmin={() => {
           setIsAdminView(true)
           setIsAnalyticsView(false)
