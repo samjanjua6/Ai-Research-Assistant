@@ -281,6 +281,16 @@ async def serve_settings_spa(full_path: str = ""):
     return HTMLResponse("<h1>Frontend build not found</h1>", status_code=404)
 
 
+@app.get("/landing", include_in_schema=False)
+@app.get("/landing/{full_path:path}", include_in_schema=False)
+async def serve_landing_spa(full_path: str = ""):
+    """Serve SPA index.html for direct navigation or hard-refresh on /landing routes."""
+    index_file = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse("<h1>Frontend build not found</h1>", status_code=404)
+
+
 if os.path.isdir(frontend_dist):
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 
